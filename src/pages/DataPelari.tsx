@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Runner {
+interface RunnerUI {
   id: string;
   name: string;
   rank: string;
@@ -36,10 +36,13 @@ type ApiRunner = {
   name: string;
   rank?: string | null;
   status?: string | null; // validated | pending | dll
+
+  // bisa camelCase atau snake_case (kita handle dua-duanya)
   totalDistance?: number;
   totalSessions?: number;
-  total_distance?: number; // kalau API masih snake_case
+  total_distance?: number;
   total_sessions?: number;
+
   createdAt?: string;
   created_at?: string;
 };
@@ -48,29 +51,16 @@ const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
   "http://localhost:4000";
 
-const toTargetStatus = (status?: string | null): Runner["targetStatus"] => {
+const toTargetStatus = (status?: string | null): RunnerUI["targetStatus"] => {
   if (status === "validated") return "achieved";
   if (status === "pending") return "in_progress";
   return "not_started";
-};
-
-const makeEmailFromName = (name: string) => {
-  // bikin mirip contoh UI: "budi.hartono@tni.mil.id"
-  const cleaned = name
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .join(".");
-  return cleaned ? `${cleaned}@tni.mil.id` : "-";
 };
 
 const formatJoinDate = (iso?: string | null) => {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
-  // contoh: "01 Des 2025"
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
     month: "short",
@@ -78,7 +68,29 @@ const formatJoinDate = (iso?: string | null) => {
   }).format(d);
 };
 
-const getStatusBadge = (status: Runner["targetStatus"]) => {
+const makeEmail = (name: string, rank: string) => {
+  // target: mayor.budi@tni.mil.id, kapten.andi@tni.mil.id, dll
+  const rankLower = (rank || "").toLowerCase().replace(/[^a-z]/g, "");
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p.replace(/[^A-Za-z]/g, ""))
+    .filter(Boolean);
+
+  if (!parts.length) return "-";
+
+  // Kalau nama diawali pangkat (contoh: "Mayor Budi Hartono")
+  const firstWord = (parts[0] || "").toLowerCase();
+  const secondWord = (parts[1] || "").toLowerCase();
+
+  const firstName =
+    rankLower && firstWord === rankLower && secondWord ? secondWord : firstWord;
+
+  if (!rankLower || !firstName) return "-";
+  return `${rankLower}.${firstName}@tni.mil.id`;
+};
+
+const getStatusBadge = (status: RunnerUI["targetStatus"]) => {
   switch (status) {
     case "achieved":
       return (
@@ -103,7 +115,7 @@ const DataPelari = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [runners, setRunners] = useState<Runner[]>([]);
+  const [runners, setRunners] = useState<RunnerUI[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -114,10 +126,9 @@ const DataPelari = () => {
       try {
         const res = await fetch(`${API_BASE}/api/runners`);
         const json = await res.json();
-
         const data: ApiRunner[] = Array.isArray(json?.data) ? json.data : [];
 
-        const mapped: Runner[] = data.map((x) => {
+        const mapped: RunnerUI[] = data.map((x) => {
           const totalDistance =
             typeof x.totalDistance === "number"
               ? x.totalDistance
@@ -134,11 +145,13 @@ const DataPelari = () => {
 
           const createdAt = x.createdAt ?? x.created_at ?? null;
 
+          const rank = x.rank ?? "-";
+
           return {
             id: x.id,
             name: x.name,
-            rank: x.rank ?? "-",
-            email: makeEmailFromName(x.name),
+            rank,
+            email: makeEmail(x.name, rank),
             totalSessions,
             totalDistance,
             targetStatus: toTargetStatus(x.status),
@@ -147,8 +160,7 @@ const DataPelari = () => {
         });
 
         if (!cancelled) setRunners(mapped);
-      } catch (e) {
-        // kalau API down, biarkan kosong (UI tetap)
+      } catch {
         if (!cancelled) setRunners([]);
       } finally {
         if (!cancelled) setLoading(false);
@@ -161,17 +173,21 @@ const DataPelari = () => {
     };
   }, []);
 
-  const filteredRunners = runners.filter((runner) => {
-    const matchesSearch =
-      runner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      runner.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      runner.email.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredRunners = useMemo(() => {
+    return runners.filter((runner) => {
+      const q = searchQuery.toLowerCase();
 
-    const matchesStatus =
-      statusFilter === "all" || runner.targetStatus === statusFilter;
+      const matchesSearch =
+        runner.name.toLowerCase().includes(q) ||
+        runner.id.toLowerCase().includes(q) ||
+        runner.email.toLowerCase().includes(q);
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus =
+        statusFilter === "all" || runner.targetStatus === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [runners, searchQuery, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -216,82 +232,106 @@ const DataPelari = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Pangkat</th>
-              <th>Nama</th>
-              <th>Email</th>
-              <th>Total Sesi</th>
-              <th>Total Jarak</th>
-              <th>Status Target</th>
-              <th>Bergabung</th>
-              <th className="text-right">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
-                  Loading...
-                </td>
+      {/* Table Card (bentuk sama seperti tabel di Dashboard) */}
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden animate-slide-up">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/30">
+              <tr className="text-left text-sm text-muted-foreground">
+                <th className="px-5 py-3 font-medium">Pangkat</th>
+                <th className="px-5 py-3 font-medium">Nama</th>
+                <th className="px-5 py-3 font-medium">Email</th>
+                <th className="px-5 py-3 font-medium">Total Sesi</th>
+                <th className="px-5 py-3 font-medium">Total Jarak</th>
+                <th className="px-5 py-3 font-medium">Status Target</th>
+                <th className="px-5 py-3 font-medium">Bergabung</th>
+                <th className="px-5 py-3 font-medium text-right">Aksi</th>
               </tr>
-            ) : filteredRunners.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-6 text-center text-sm text-muted-foreground">
-                  Tidak ada data.
-                </td>
-              </tr>
-            ) : (
-              filteredRunners.map((runner) => (
-                <tr key={runner.id}>
-                  <td className="font-medium">{runner.rank}</td>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-primary">
-                          {runner.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{runner.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          ID: {runner.id}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="text-muted-foreground">{runner.email}</td>
-                  <td>{runner.totalSessions}</td>
-                  <td>{runner.totalDistance.toFixed(1)} km</td>
-                  <td>{getStatusBadge(runner.targetStatus)}</td>
-                  <td className="text-muted-foreground">{runner.joinDate}</td>
-                  <td className="text-right">
-                    <Link to={`/pelari/${runner.id}`}>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
+            </thead>
+
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-5 py-8 text-center text-sm text-muted-foreground"
+                  >
+                    Loading...
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filteredRunners.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-5 py-8 text-center text-sm text-muted-foreground"
+                  >
+                    Tidak ada data.
+                  </td>
+                </tr>
+              ) : (
+                filteredRunners.map((runner) => (
+                  <tr key={runner.id} className="hover:bg-muted/30">
+                    <td className="px-5 py-4 font-medium">{runner.rank}</td>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-primary">
+                            {runner.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .slice(0, 2)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{runner.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            ID : {runner.id}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {runner.email}
+                    </td>
+
+                    <td className="px-5 py-4">{runner.totalSessions}</td>
+
+                    <td className="px-5 py-4">
+                      {runner.totalDistance.toFixed(1)} km
+                    </td>
+
+                    <td className="px-5 py-4">
+                      {getStatusBadge(runner.targetStatus)}
+                    </td>
+
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {runner.joinDate}
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      <Link to={`/pelari/${runner.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination (tetap seperti gaya kamu) */}
+        <div className="flex items-center justify-between px-5 py-4 border-t border-border">
           <p className="text-sm text-muted-foreground">
             Menampilkan {filteredRunners.length} dari {runners.length} pelari
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" disabled>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" className="min-w-[40px]">
