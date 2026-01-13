@@ -1,0 +1,251 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Military Green Theme */
+    --background: 210 20% 98%;
+    --foreground: 160 30% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 30% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 30% 10%;
+
+    /* Military Olive Green */
+    --primary: 85 35% 35%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Lighter olive for secondary */
+    --secondary: 85 20% 92%;
+    --secondary-foreground: 85 35% 25%;
+
+    --muted: 210 15% 95%;
+    --muted-foreground: 210 10% 45%;
+
+    /* Teal accent for actions */
+    --accent: 170 60% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success green */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 210 15% 90%;
+    --input: 210 15% 90%;
+    --ring: 85 35% 35%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - darker military theme */
+    --sidebar-background: 160 25% 12%;
+    --sidebar-foreground: 160 10% 85%;
+    --sidebar-primary: 85 45% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 160 20% 18%;
+    --sidebar-accent-foreground: 160 10% 90%;
+    --sidebar-border: 160 20% 20%;
+    --sidebar-ring: 85 45% 50%;
+
+    /* Chart colors */
+    --chart-1: 85 45% 45%;
+    --chart-2: 170 60% 45%;
+    --chart-3: 200 70% 50%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 0 72% 51%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(85 45% 40%) 0%, hsl(85 35% 30%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(170 60% 45%) 0%, hsl(170 50% 35%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(160 25% 12%) 0%, hsl(160 30% 8%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(160 30% 10% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(160 30% 10% / 0.1), 0 2px 4px -2px hsl(160 30% 10% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(160 30% 10% / 0.1), 0 4px 6px -4px hsl(160 30% 10% / 0.1);
+    --shadow-card: 0 1px 3px 0 hsl(160 30% 10% / 0.1), 0 1px 2px -1px hsl(160 30% 10% / 0.1);
+  }
+
+  .dark {
+    --background: 160 25% 8%;
+    --foreground: 160 10% 95%;
+
+    --card: 160 20% 12%;
+    --card-foreground: 160 10% 95%;
+
+    --popover: 160 20% 12%;
+    --popover-foreground: 160 10% 95%;
+
+    --primary: 85 50% 50%;
+    --primary-foreground: 160 30% 8%;
+
+    --secondary: 160 15% 18%;
+    --secondary-foreground: 160 10% 90%;
+
+    --muted: 160 15% 18%;
+    --muted-foreground: 160 10% 60%;
+
+    --accent: 170 55% 50%;
+    --accent-foreground: 160 30% 8%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 65% 50%;
+    --success-foreground: 0 0% 0%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 160 15% 20%;
+    --input: 160 15% 20%;
+    --ring: 85 50% 50%;
+
+    --sidebar-background: 160 30% 6%;
+    --sidebar-foreground: 160 10% 85%;
+    --sidebar-primary: 85 50% 55%;
+    --sidebar-primary-foreground: 160 30% 8%;
+    --sidebar-accent: 160 20% 12%;
+    --sidebar-accent-foreground: 160 10% 90%;
+    --sidebar-border: 160 15% 15%;
+    --sidebar-ring: 85 50% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply bg-card rounded-xl p-5 border border-border shadow-sm transition-all duration-200 hover:shadow-md;
+  }
+
+  .stat-card-primary {
+    @apply bg-primary text-primary-foreground rounded-xl p-5 shadow-md;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors duration-150 cursor-pointer min-h-[44px];
+  }
+
+  .sidebar-link-active {
+    @apply bg-sidebar-accent text-sidebar-primary font-medium shadow-sm;
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table th {
+    @apply text-left font-medium text-muted-foreground px-4 py-3 bg-muted/50 first:rounded-tl-lg last:rounded-tr-lg;
+  }
+
+  .data-table td {
+    @apply px-4 py-3.5 border-b border-border;
+  }
+
+  .data-table tbody tr {
+    @apply hover:bg-muted/30 transition-colors;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/15 text-success;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning;
+  }
+
+  .badge-pending {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground;
+  }
+
+  .page-header {
+    @apply mb-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  .page-description {
+    @apply text-muted-foreground mt-1;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .gradient-dark {
+    background: var(--gradient-dark);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
