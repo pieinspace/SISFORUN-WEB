@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, FileSpreadsheet, Calendar, BarChart3, Users, Target } from "lucide-react";
+import { FileText, FileSpreadsheet, BarChart3, Users, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -86,76 +86,11 @@ const formatDateID = (yyyyMmDd: string) => {
   }).format(d);
 };
 
-const isInPeriod = (dateYYYYMMDD: string, period: string) => {
-  // period: daily/weekly/monthly
-  const date = new Date(`${dateYYYYMMDD}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return true;
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  if (period === "daily") {
-    return date >= startOfToday;
-  }
-
-  if (period === "weekly") {
-    const start = new Date(startOfToday);
-    start.setDate(start.getDate() - 6);
-    return date >= start;
-  }
-
-  if (period === "monthly") {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return date >= start;
-  }
-
-  return true;
-};
-
 const Laporan = () => {
-  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [selectedReport, setSelectedReport] = useState<ReportTypeId | null>(null);
 
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
-
-  /* ================== GET CURRENT DATE PERIOD ================== */
-  const getCurrentPeriodText = () => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-
-    if (period === "daily") {
-      return now.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    } else if (period === "weekly") {
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
-
-      const startStr = startOfWeek.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-      });
-      const endStr = endOfWeek.toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      return `${startStr} s.d. ${endStr}`;
-    } else if (period === "monthly") {
-      return now.toLocaleDateString("id-ID", {
-        month: "long",
-        year: "numeric",
-      });
-    }
-
-    return `${currentYear}`;
-  };
 
   /* ================== LOAD DATA ASLI DARI API ================== */
   useEffect(() => {
@@ -171,10 +106,7 @@ const Laporan = () => {
           const json = await res.json();
           const data: ApiTarget14[] = Array.isArray(json?.data) ? json.data : [];
 
-          // filter periode berdasarkan achieved_date
-          const filtered = data.filter((x) => isInPeriod(x.achieved_date, period));
-
-          const mapped: ReportRow[] = filtered.map((x, i) => ({
+          const mapped: ReportRow[] = data.map((x, i) => ({
             no: i + 1,
             id: x.id,
             nama: x.name,
@@ -203,9 +135,6 @@ const Laporan = () => {
 
             const created = (x.createdAt ?? x.created_at ?? "").toString();
             const dateYYYYMMDD = created ? created.slice(0, 10) : "1970-01-01";
-            const dateOk = isInPeriod(dateYYYYMMDD, period);
-
-            if (!dateOk) return null;
 
             const status =
               totalDistance >= 14 ? "Tercapai" : totalDistance >= 1 ? "Dalam Proses" : "Belum Mulai";
@@ -236,7 +165,7 @@ const Laporan = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedReport, period]);
+  }, [selectedReport]);
 
   /* ================== GENERATE PDF ================== */
   const generatePDF = () => {
@@ -245,7 +174,7 @@ const Laporan = () => {
 
     const opt = {
       margin: [0.5, 0.5, 0.5, 0.5] as [number, number, number, number],
-      filename: `laporan-${selectedReport}-${period}.pdf`,
+      filename: `laporan-${selectedReport}.pdf`,
       image: { type: "jpeg" as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
       jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
@@ -278,7 +207,7 @@ const Laporan = () => {
     const titleRows = [
       ["Laporan Monitoring"],
       ["SISFORUN - Admin Panel"],
-      [`Periode ${getCurrentPeriodText()}`],
+      [new Date().toLocaleDateString("id-ID")],
       [""] // empty
     ];
 
@@ -303,7 +232,7 @@ const Laporan = () => {
 
     XLSX.utils.book_append_sheet(wb, ws, "Laporan");
 
-    XLSX.writeFile(wb, `laporan-${selectedReport}-${period}.xlsx`);
+    XLSX.writeFile(wb, `laporan-${selectedReport}.xlsx`);
   };
 
   const tableTitle = useMemo(() => {
@@ -320,22 +249,6 @@ const Laporan = () => {
         <p className="text-sm text-muted-foreground">
           Generate dan unduh laporan monitoring
         </p>
-      </div>
-
-      {/* ================= PILIH PERIODE ================= */}
-      <div className="flex items-center gap-4">
-        <Calendar className="h-5 w-5 text-muted-foreground" />
-        <span className="text-sm font-medium">Periode:</span>
-        <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="daily">Harian</SelectItem>
-            <SelectItem value="weekly">Mingguan</SelectItem>
-            <SelectItem value="monthly">Bulanan</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* ================= JENIS LAPORAN ================= */}
@@ -383,7 +296,7 @@ const Laporan = () => {
               <h2 className="font-bold text-lg uppercase">{tableTitle}</h2>
               <p className="text-sm">
                 SISFORUN - Admin Panel <br />
-                Periode {getCurrentPeriodText()}
+                {new Date().toLocaleDateString("id-ID")}
               </p>
             </div>
 
