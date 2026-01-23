@@ -1,354 +1,304 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Search,
-  Filter,
-  Download,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  Target,
-  Clock,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState } from 'react';
+import { Search, Download, ChevronDown } from 'lucide-react';
 
-interface RunnerUI {
-  id: string;
-  name: string;
-  rank: string;
+interface Pelari {
+  id: number;
+  pangkat: string;
+  nama: string;
   email: string;
-  totalSessions: number;
-  totalDistance: number;
-  targetStatus: "achieved" | "in_progress" | "not_started";
-  joinDate: string;
+  kesatuan: string;
+  subdis: string;
+  totalSesi: number;
+  totalJarak: number;
+  statusTarget: string;
+  bergabung: string;
 }
 
-type ApiRunner = {
-  id: string;
-  name: string;
-  rank?: string | null;
-
-  // bisa camelCase atau snake_case
-  totalDistance?: number;
-  totalSessions?: number;
-  total_distance?: number;
-  total_sessions?: number;
-
-  createdAt?: string;
-  created_at?: string;
-};
-
-const API_BASE =
-  (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
-  "http://localhost:4000";
-
-// ✅ status berdasarkan totalDistance (3 level)
-const toTargetStatus = (totalDistance: number): RunnerUI["targetStatus"] => {
-  if (totalDistance >= 14) return "achieved";
-  if (totalDistance >= 1) return "in_progress";
-  return "not_started";
-};
-
-const formatJoinDate = (iso?: string | null) => {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(d);
-};
-
-const makeEmail = (name: string, rank: string) => {
-  // target: mayor.budi@tni.mil.id, kapten.andi@tni.mil.id, dll
-  const rankLower = (rank || "").toLowerCase().replace(/[^a-z]/g, "");
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .map((p) => p.replace(/[^A-Za-z]/g, ""))
-    .filter(Boolean);
-
-  if (!parts.length) return "-";
-
-  // Jika name diawali pangkat (contoh: "Mayor Budi Hartono"), ambil kata setelah pangkat sebagai nama depan
-  const firstWord = (parts[0] || "").toLowerCase();
-  const secondWord = (parts[1] || "").toLowerCase();
-
-  const firstName =
-    rankLower && firstWord === rankLower && secondWord ? secondWord : firstWord;
-
-  if (!rankLower || !firstName) return "-";
-  return `${rankLower}.${firstName}@tni.mil.id`;
-};
-
-const getStatusBadge = (status: RunnerUI["targetStatus"]) => {
-  switch (status) {
-    case "achieved":
-      return (
-        <span className="badge-success">
-          <Target className="mr-1 h-3 w-3" />
-          Tercapai
-        </span>
-      );
-    case "in_progress":
-      return (
-        <span className="badge-warning">
-          <Clock className="mr-1 h-3 w-3" />
-          Dalam Proses
-        </span>
-      );
-    default:
-      return <span className="badge-pending">Belum Mulai</span>;
-  }
-};
-
 const DataPelari = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | RunnerUI["targetStatus"]
-  >("all");
+  const [searchNama, setSearchNama] = useState('');
+  const [filterKesatuan, setFilterKesatuan] = useState('');
+  const [filterSubdis, setFilterSubdis] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
-  const [runners, setRunners] = useState<RunnerUI[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Data dummy untuk dropdown
+  const kesatuanList = ['Kesatuan A', 'Kesatuan B', 'Kesatuan C', 'Kesatuan D'];
+  const subdisList = ['Subdis 1', 'Subdis 2', 'Subdis 3', 'Subdis 4'];
 
-  useEffect(() => {
-    let cancelled = false;
+  // Data pelari dummy
+  const pelariData: Pelari[] = [
+    {
+      id: 1,
+      pangkat: 'Lettu',
+      nama: 'Ahmad Fauzi',
+      email: 'ahmad.fauzi@mil.id',
+      kesatuan: 'Kesatuan A',
+      subdis: 'Subdis 1',
+      totalSesi: 12,
+      totalJarak: 48.5,
+      statusTarget: 'Tercapai',
+      bergabung: '2024-01-15'
+    },
+    {
+      id: 2,
+      pangkat: 'Kapten',
+      nama: 'Budi Santoso',
+      email: 'budi.santoso@mil.id',
+      kesatuan: 'Kesatuan B',
+      subdis: 'Subdis 2',
+      totalSesi: 8,
+      totalJarak: 32.0,
+      statusTarget: 'Dalam Proses',
+      bergabung: '2024-02-01'
+    },
+    {
+      id: 3,
+      pangkat: 'Mayor',
+      nama: 'Candra Wijaya',
+      email: 'candra.wijaya@mil.id',
+      kesatuan: 'Kesatuan A',
+      subdis: 'Subdis 1',
+      totalSesi: 15,
+      totalJarak: 60.2,
+      statusTarget: 'Tercapai',
+      bergabung: '2024-01-10'
+    },
+    {
+      id: 4,
+      pangkat: 'Sertu',
+      nama: 'Dewi Lestari',
+      email: 'dewi.lestari@mil.id',
+      kesatuan: 'Kesatuan C',
+      subdis: 'Subdis 3',
+      totalSesi: 5,
+      totalJarak: 20.0,
+      statusTarget: 'Belum Mulai',
+      bergabung: '2024-03-05'
+    }
+  ];
 
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`${API_BASE}/api/runners`);
-        const json = await res.json();
-        const data: ApiRunner[] = Array.isArray(json?.data) ? json.data : [];
+  // Filter data
+  const filteredData = pelariData.filter(pelari => {
+    const matchNama = pelari.nama.toLowerCase().includes(searchNama.toLowerCase());
+    const matchKesatuan = !filterKesatuan || pelari.kesatuan === filterKesatuan;
+    const matchSubdis = !filterSubdis || pelari.subdis === filterSubdis;
+    const matchStatus = !filterStatus || pelari.statusTarget === filterStatus;
+    return matchNama && matchKesatuan && matchSubdis && matchStatus;
+  });
 
-        const mapped: RunnerUI[] = data.map((x) => {
-          const totalDistance =
-            typeof x.totalDistance === "number"
-              ? x.totalDistance
-              : typeof x.total_distance === "number"
-              ? x.total_distance
-              : 0;
-
-          const totalSessions =
-            typeof x.totalSessions === "number"
-              ? x.totalSessions
-              : typeof x.total_sessions === "number"
-              ? x.total_sessions
-              : 0;
-
-          const createdAt = x.createdAt ?? x.created_at ?? null;
-          const rank = x.rank ?? "-";
-
-          return {
-            id: x.id,
-            name: x.name,
-            rank,
-            email: makeEmail(x.name, rank),
-            totalSessions,
-            totalDistance,
-            targetStatus: toTargetStatus(totalDistance),
-            joinDate: formatJoinDate(createdAt),
-          };
-        });
-
-        if (!cancelled) setRunners(mapped);
-      } catch {
-        if (!cancelled) setRunners([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const filteredRunners = useMemo(() => {
-    return runners.filter((runner) => {
-      const q = searchQuery.toLowerCase();
-
-      const matchesSearch =
-        runner.name.toLowerCase().includes(q) ||
-        runner.id.toLowerCase().includes(q) ||
-        runner.email.toLowerCase().includes(q);
-
-      const matchesStatus = statusFilter === "all" || runner.targetStatus === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [runners, searchQuery, statusFilter]);
+  const handleExport = () => {
+    console.log('Exporting data...');
+    alert('Fitur export akan segera tersedia');
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="page-header">
-        <h1 className="page-title">Data Pelari</h1>
-        <p className="page-description">
-          Kelola dan pantau seluruh data pelari terdaftar
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari nama, ID, atau email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+    <div className="p-8 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Data Pelari</h1>
+          <p className="text-gray-500">Kelola dan pantau seluruh data pelari terdaftar</p>
         </div>
 
-        <div className="flex gap-3">
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as any)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status Target" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Status</SelectItem>
-              <SelectItem value="achieved">Tercapai</SelectItem>
-              <SelectItem value="in_progress">Dalam Proses</SelectItem>
-              <SelectItem value="not_started">Belum Mulai</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Filters - Single Row */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="grid grid-cols-12 gap-4">
+            {/* Search Nama */}
+            <div className="col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cari Nama
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama pelari..."
+                  value={searchNama}
+                  onChange={(e) => setSearchNama(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
 
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+            {/* Filter Kesatuan */}
+            <div className="col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kesatuan
+              </label>
+              <div className="relative">
+                <select
+                  value={filterKesatuan}
+                  onChange={(e) => setFilterKesatuan(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white cursor-pointer"
+                >
+                  <option value="">Semua Kesatuan</option>
+                  {kesatuanList.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Filter Subdis */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Subdis
+              </label>
+              <div className="relative">
+                <select
+                  value={filterSubdis}
+                  onChange={(e) => setFilterSubdis(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white cursor-pointer"
+                >
+                  <option value="">Semua Subdis</option>
+                  {subdisList.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Filter Status */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <div className="relative">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white cursor-pointer"
+                >
+                  <option value="">Semua Status</option>
+                  <option value="Tercapai">Tercapai</option>
+                  <option value="Dalam Proses">Dalam Proses</option>
+                  <option value="Belum Mulai">Belum Mulai</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Export Button */}
+            <div className="col-span-2 flex items-end">
+              <button 
+                onClick={handleExport}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Table Card (bentuk sama seperti tabel di Dashboard) */}
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden animate-slide-up">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/30">
-              <tr className="text-left text-sm text-muted-foreground">
-                <th className="px-5 py-3 font-medium">Pangkat</th>
-                <th className="px-5 py-3 font-medium">Nama</th>
-                <th className="px-5 py-3 font-medium">Email</th>
-                <th className="px-5 py-3 font-medium">Total Sesi</th>
-                <th className="px-5 py-3 font-medium">Total Jarak</th>
-                <th className="px-5 py-3 font-medium">Status Target</th>
-                <th className="px-5 py-3 font-medium">Bergabung</th>
-                <th className="px-5 py-3 font-medium text-right">Aksi</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-border">
-              {loading ? (
+        {/* Table */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <td
-                    colSpan={8}
-                    className="px-5 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    Loading...
-                  </td>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pangkat
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Nama
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Sesi
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Jarak
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status Target
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Bergabung
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
                 </tr>
-              ) : filteredRunners.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-5 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    Tidak ada data.
-                  </td>
-                </tr>
-              ) : (
-                filteredRunners.map((runner) => (
-                  <tr key={runner.id} className="hover:bg-muted/30">
-                    <td className="px-5 py-4 font-medium">{runner.rank}</td>
-
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-primary">
-                            {runner.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium">{runner.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ID : {runner.id}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-5 py-4 text-muted-foreground">
-                      {runner.email}
-                    </td>
-
-                    <td className="px-5 py-4">{runner.totalSessions}</td>
-
-                    <td className="px-5 py-4">
-                      {runner.totalDistance.toFixed(2)} km
-                    </td>
-
-                    <td className="px-5 py-4">
-                      {getStatusBadge(runner.targetStatus)}
-                    </td>
-
-                    <td className="px-5 py-4 text-muted-foreground">
-                      {runner.joinDate}
-                    </td>
-
-                    <td className="px-5 py-4 text-right">
-                      <Link to={`/pelari/${runner.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredData.length > 0 ? (
+                  filteredData.map((pelari) => (
+                    <tr key={pelari.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {pelari.pangkat}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {pelari.nama}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {pelari.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {pelari.totalSesi}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {pelari.totalJarak} km
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                          pelari.statusTarget === 'Tercapai' 
+                            ? 'bg-green-100 text-green-800' 
+                            : pelari.statusTarget === 'Dalam Proses'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {pelari.statusTarget}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {pelari.bergabung}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button className="text-blue-600 hover:text-blue-800 font-medium">
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      Tidak ada data.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination (UI tetap) */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            Menampilkan {filteredRunners.length} dari {runners.length} pelari
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="min-w-[40px]">
-              1
-            </Button>
-            <Button variant="ghost" size="sm" className="min-w-[40px]">
-              2
-            </Button>
-            <Button variant="ghost" size="sm" className="min-w-[40px]">
-              3
-            </Button>
-            <Button variant="outline" size="sm">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          {/* Pagination */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-700">
+                Menampilkan {filteredData.length} dari {pelariData.length} pelari
+              </p>
+              <div className="flex space-x-2">
+                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 transition">
+                  ‹
+                </button>
+                <button className="px-3 py-1 bg-green-600 text-white rounded">
+                  1
+                </button>
+                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 transition">
+                  2
+                </button>
+                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 transition">
+                  3
+                </button>
+                <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 transition">
+                  ›
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
