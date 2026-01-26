@@ -26,6 +26,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface TargetRunner {
   id: string;
@@ -37,6 +51,8 @@ interface TargetRunner {
   achievedDate: string; // untuk ditampilkan (format Indonesia)
   achievedDateRaw: string; // YYYY-MM-DD untuk filter
   validationStatus: "validated" | "pending";
+  kesatuan: string;
+  subdis: string;
 }
 
 type ApiTargetRow = {
@@ -48,11 +64,30 @@ type ApiTargetRow = {
   pace: string | null;
   achieved_date: string; // YYYY-MM-DD
   validation_status: "validated" | "pending";
+  kesatuan?: string;
+  subdis?: string;
 };
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
   "http://localhost:4000";
+
+// Data dummy untuk kesatuan dan subdis
+const kesatuanList = [
+  "Kesatuan A",
+  "Kesatuan B",
+  "Kesatuan C",
+  "Kesatuan D",
+  "Kesatuan E",
+];
+
+const subdisList = [
+  "Subdis 1",
+  "Subdis 2",
+  "Subdis 3",
+  "Subdis 4",
+  "Subdis 5",
+];
 
 const formatDateID = (yyyyMmDd: string) => {
   // input: "2026-01-09"
@@ -97,6 +132,10 @@ const Target14KM = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [filterKesatuan, setFilterKesatuan] = useState("");
+  const [filterSubdis, setFilterSubdis] = useState("");
+  const [openKesatuan, setOpenKesatuan] = useState(false);
+  const [openSubdis, setOpenSubdis] = useState(false);
 
   const [targetRunners, setTargetRunners] = useState<TargetRunner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +160,8 @@ const Target14KM = () => {
           achievedDate: formatDateID(r.achieved_date),
           achievedDateRaw: r.achieved_date,
           validationStatus: r.validation_status,
+          kesatuan: r.kesatuan ?? "Kesatuan A",
+          subdis: r.subdis ?? "Subdis 1",
         }));
 
         if (!cancelled) setTargetRunners(mapped);
@@ -148,9 +189,12 @@ const Target14KM = () => {
 
       const matchesDate = isInPeriod(runner.achievedDateRaw, dateFilter);
 
-      return matchesSearch && matchesStatus && matchesDate;
+      const matchesKesatuan = !filterKesatuan || runner.kesatuan === filterKesatuan;
+      const matchesSubdis = !filterSubdis || runner.subdis === filterSubdis;
+
+      return matchesSearch && matchesStatus && matchesDate && matchesKesatuan && matchesSubdis;
     });
-  }, [targetRunners, searchQuery, statusFilter, dateFilter]);
+  }, [targetRunners, searchQuery, statusFilter, dateFilter, filterKesatuan, filterSubdis]);
 
   const validatedCount = useMemo(
     () => targetRunners.filter((r) => r.validationStatus === "validated").length,
@@ -202,11 +246,11 @@ const Target14KM = () => {
         </div>
       </div>
 
-      {/* Filters - Grid Layout sama seperti Data Pelari */}
+      {/* Filters - Grid Layout dengan Kesatuan & Subdis */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-6">
         <div className="grid grid-cols-12 gap-4">
           {/* Search Nama */}
-          <div className="col-span-12 sm:col-span-3">
+          <div className="col-span-12 sm:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Cari Nama
             </label>
@@ -221,8 +265,110 @@ const Target14KM = () => {
             </div>
           </div>
 
+          {/* Filter Kesatuan - Searchable Dropdown */}
+          <div className="col-span-12 sm:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Kesatuan
+            </label>
+            <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openKesatuan}
+                  className="w-full justify-between"
+                >
+                  {filterKesatuan || "Semua Kesatuan"}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Cari kesatuan..." />
+                  <CommandList>
+                    <CommandEmpty>Tidak ada kesatuan.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value=""
+                        onSelect={() => {
+                          setFilterKesatuan("");
+                          setOpenKesatuan(false);
+                        }}
+                      >
+                        Semua Kesatuan
+                      </CommandItem>
+                      {kesatuanList.map((kesatuan) => (
+                        <CommandItem
+                          key={kesatuan}
+                          value={kesatuan}
+                          onSelect={(currentValue) => {
+                            setFilterKesatuan(currentValue === filterKesatuan ? "" : currentValue);
+                            setOpenKesatuan(false);
+                          }}
+                        >
+                          {kesatuan}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Filter Subdis - Searchable Dropdown */}
+          <div className="col-span-12 sm:col-span-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Subdis
+            </label>
+            <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openSubdis}
+                  className="w-full justify-between"
+                >
+                  {filterSubdis || "Semua Subdis"}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Cari subdis..." />
+                  <CommandList>
+                    <CommandEmpty>Tidak ada subdis.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value=""
+                        onSelect={() => {
+                          setFilterSubdis("");
+                          setOpenSubdis(false);
+                        }}
+                      >
+                        Semua Subdis
+                      </CommandItem>
+                      {subdisList.map((subdis) => (
+                        <CommandItem
+                          key={subdis}
+                          value={subdis}
+                          onSelect={(currentValue) => {
+                            setFilterSubdis(currentValue === filterSubdis ? "" : currentValue);
+                            setOpenSubdis(false);
+                          }}
+                        >
+                          {subdis}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Filter Status Validasi */}
-          <div className="col-span-12 sm:col-span-3">
+          <div className="col-span-12 sm:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Status Validasi
             </label>
@@ -239,7 +385,7 @@ const Target14KM = () => {
           </div>
 
           {/* Filter Periode Waktu */}
-          <div className="col-span-12 sm:col-span-4">
+          <div className="col-span-12 sm:col-span-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Periode Waktu
             </label>

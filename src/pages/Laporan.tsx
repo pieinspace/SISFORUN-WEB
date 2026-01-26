@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileText, FileSpreadsheet, BarChart3, Users, Target, Search } from "lucide-react";
+import { FileText, FileSpreadsheet, BarChart3, Users, Target, Search, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import html2pdf from "html2pdf.js";
 import * as XLSX from "xlsx";
 
@@ -52,6 +66,8 @@ type ApiRunner = {
   totalSessions?: number;
   created_at?: string;
   createdAt?: string;
+  kesatuan?: string;
+  subdis?: string;
 };
 
 type ApiTarget14 = {
@@ -63,6 +79,8 @@ type ApiTarget14 = {
   pace: string | null;
   achieved_date: string; // YYYY-MM-DD
   validation_status: "validated" | "pending";
+  kesatuan?: string;
+  subdis?: string;
 };
 
 type ReportRow = {
@@ -75,6 +93,8 @@ type ReportRow = {
   pace: string;
   tanggal: string;
   status: string;
+  kesatuan: string;
+  subdis: string;
 };
 
 const formatDateID = (yyyyMmDd: string) => {
@@ -87,9 +107,29 @@ const formatDateID = (yyyyMmDd: string) => {
   }).format(d);
 };
 
+// Data dummy untuk kesatuan dan subdis
+const kesatuanList = [
+  "Kesatuan A",
+  "Kesatuan B",
+  "Kesatuan C",
+  "Kesatuan D",
+  "Kesatuan E",
+];
+
+const subdisList = [
+  "Subdis 1",
+  "Subdis 2",
+  "Subdis 3",
+  "Subdis 4",
+  "Subdis 5",
+];
+
 const Laporan = () => {
   const [selectedReport, setSelectedReport] = useState<ReportTypeId | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [filterKesatuan, setFilterKesatuan] = useState("");
+  const [filterSubdis, setFilterSubdis] = useState("");
+  const [openKesatuan, setOpenKesatuan] = useState(false);
+  const [openSubdis, setOpenSubdis] = useState(false);
 
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,6 +158,8 @@ const Laporan = () => {
             pace: x.pace ?? "-",
             tanggal: formatDateID(x.achieved_date),
             status: x.validation_status === "validated" ? "Tervalidasi" : "Pending",
+            kesatuan: x.kesatuan ?? "Kesatuan A",
+            subdis: x.subdis ?? "Subdis 1",
           }));
 
           if (!cancelled) setRows(mapped);
@@ -151,6 +193,8 @@ const Laporan = () => {
               pace: "-",
               tanggal: created ? formatDateID(dateYYYYMMDD) : "-",
               status,
+              kesatuan: x.kesatuan ?? "Kesatuan A",
+              subdis: x.subdis ?? "Subdis 1",
             };
           }).filter(Boolean) as ReportRow[];
 
@@ -169,19 +213,14 @@ const Laporan = () => {
     };
   }, [selectedReport]);
 
-  /* ================== FILTER DATA BERDASARKAN SEARCH ================== */
+  /* ================== FILTER DATA BERDASARKAN KESATUAN & SUBDIS ================== */
   const filteredRows = useMemo(() => {
-    if (!searchQuery.trim()) return rows;
-    
-    const query = searchQuery.toLowerCase();
     return rows.filter((row) => {
-      return (
-        row.nama.toLowerCase().includes(query) ||
-        row.id.toLowerCase().includes(query) ||
-        row.pangkat.toLowerCase().includes(query)
-      );
+      const matchKesatuan = !filterKesatuan || row.kesatuan === filterKesatuan;
+      const matchSubdis = !filterSubdis || row.subdis === filterSubdis;
+      return matchKesatuan && matchSubdis;
     });
-  }, [rows, searchQuery]);
+  }, [rows, filterKesatuan, filterSubdis]);
 
   /* ================== GENERATE PDF ================== */
   const generatePDF = () => {
@@ -210,6 +249,8 @@ const Laporan = () => {
       "ID Pelari": r.id,
       Nama: r.nama,
       Pangkat: r.pangkat,
+      Kesatuan: r.kesatuan,
+      Subdis: r.subdis,
       "Jarak (km)": r.jarakKm,
       Waktu: r.waktu,
       Pace: r.pace,
@@ -303,20 +344,108 @@ const Laporan = () => {
         })}
       </div>
 
-      {/* ================= SEARCH BAR ================= */}
+      {/* ================= FILTER KESATUAN & SUBDIS ================= */}
       {selectedReport && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-4">
           <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari nama, ID, atau pangkat..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+            {/* Filter Kesatuan - Searchable Dropdown */}
+            <div className="flex-1">
+              <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openKesatuan}
+                    className="w-full justify-between"
+                  >
+                    {filterKesatuan || "Semua Kesatuan"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari kesatuan..." />
+                    <CommandList>
+                      <CommandEmpty>Tidak ada kesatuan.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            setFilterKesatuan("");
+                            setOpenKesatuan(false);
+                          }}
+                        >
+                          Semua Kesatuan
+                        </CommandItem>
+                        {kesatuanList.map((kesatuan) => (
+                          <CommandItem
+                            key={kesatuan}
+                            value={kesatuan}
+                            onSelect={(currentValue) => {
+                              setFilterKesatuan(currentValue === filterKesatuan ? "" : currentValue);
+                              setOpenKesatuan(false);
+                            }}
+                          >
+                            {kesatuan}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
-            <div className="text-sm text-muted-foreground">
+
+            {/* Filter Subdis - Searchable Dropdown */}
+            <div className="flex-1">
+              <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openSubdis}
+                    className="w-full justify-between"
+                  >
+                    {filterSubdis || "Semua Subdis"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari subdis..." />
+                    <CommandList>
+                      <CommandEmpty>Tidak ada subdis.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value=""
+                          onSelect={() => {
+                            setFilterSubdis("");
+                            setOpenSubdis(false);
+                          }}
+                        >
+                          Semua Subdis
+                        </CommandItem>
+                        {subdisList.map((subdis) => (
+                          <CommandItem
+                            key={subdis}
+                            value={subdis}
+                            onSelect={(currentValue) => {
+                              setFilterSubdis(currentValue === filterSubdis ? "" : currentValue);
+                              setOpenSubdis(false);
+                            }}
+                          >
+                            {subdis}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Counter */}
+            <div className="text-sm text-muted-foreground whitespace-nowrap">
               Menampilkan {filteredRows.length} dari {rows.length} data
             </div>
           </div>
@@ -371,7 +500,7 @@ const Laporan = () => {
                   ) : filteredRows.length === 0 ? (
                     <tr>
                       <td className="border border-black p-2 text-center" colSpan={9}>
-                        {searchQuery ? "Tidak ada data yang sesuai dengan pencarian." : "Tidak ada data."}
+                        Tidak ada data.
                       </td>
                     </tr>
                   ) : (
