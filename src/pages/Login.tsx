@@ -11,7 +11,7 @@ interface LoginProps {
 
 const Login = ({ onLogin }: LoginProps) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -24,11 +24,11 @@ const Login = ({ onLogin }: LoginProps) => {
 
     // Simulate login - replace with actual auth
     setTimeout(() => {
-      if (email === "admin@sisforun.id" && password === "admin123") {
+      if (username === "admin" && password === "admin123") {
         onLogin();
         navigate("/");
       } else {
-        setError("Email atau password salah. Silakan coba lagi.");
+        setError("Username atau password salah. Silakan coba lagi.");
       }
       setIsLoading(false);
     }, 1000);
@@ -104,15 +104,15 @@ const Login = ({ onLogin }: LoginProps) => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="admin@sisforun.id"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    id="username"
+                    type="text"
+                    placeholder="admin"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="pl-10"
                     required
                   />
@@ -157,7 +157,7 @@ const Login = ({ onLogin }: LoginProps) => {
             </form>
 
             <p className="text-center text-sm text-muted-foreground">
-              Demo: admin@sisforun.id / admin123
+              Demo: admin / admin123
             </p>
           </div>
         </div>
