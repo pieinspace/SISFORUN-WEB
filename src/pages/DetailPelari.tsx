@@ -8,8 +8,21 @@ import {
   Clock,
   TrendingUp,
   Activity,
+  Pencil,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   LineChart,
   Line,
@@ -105,6 +118,14 @@ const DetailPelari = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Edit State
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    nama: '',
+    pangkat: ''
+  });
+
   useEffect(() => {
     let cancelled = false;
 
@@ -129,15 +150,15 @@ const DetailPelari = () => {
           typeof r.totalDistance === "number"
             ? r.totalDistance
             : typeof r.total_distance === "number"
-            ? r.total_distance
-            : 0;
+              ? r.total_distance
+              : 0;
 
         const totalSessions =
           typeof r.totalSessions === "number"
             ? r.totalSessions
             : typeof r.total_sessions === "number"
-            ? r.total_sessions
-            : 0;
+              ? r.total_sessions
+              : 0;
 
         const createdAt = (r.createdAt ?? r.created_at ?? "").toString();
         const joinDate =
@@ -204,6 +225,50 @@ const DetailPelari = () => {
       cancelled = true;
     };
   }, [runnerId]);
+
+  const handleEditClick = () => {
+    if (!runner) return;
+    setEditFormData({
+      nama: runner.name,
+      pangkat: runner.rank
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!runner) return;
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/runners/${runner.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editFormData.nama,
+          rank: editFormData.pangkat
+        }),
+      });
+
+      if (!res.ok) throw new Error('Gagal memperbarui data');
+
+      toast.success('Profil pelari berhasil diperbarui');
+      setEditDialogOpen(false);
+
+      // Update local state
+      setRunner(prev => prev ? {
+        ...prev,
+        name: editFormData.nama,
+        rank: editFormData.pangkat,
+        email: makeEmail(editFormData.nama, editFormData.pangkat)
+      } : null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memperbarui profil pelari');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Progress chart: dibuat dari data asli yang tersedia (riwayat target_14km untuk runner ini)
   // Kalau belum ada, chart tetap tampil tapi kosong.
@@ -284,6 +349,10 @@ const DetailPelari = () => {
               </span>
             </div>
           </div>
+          <Button variant="outline" className="gap-2" onClick={handleEditClick}>
+            <Pencil className="h-4 w-4" />
+            Edit Profil
+          </Button>
         </div>
       </div>
 
@@ -390,9 +459,8 @@ const DetailPelari = () => {
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`h-2 w-2 rounded-full ${
-                        session.targetMet ? "bg-success" : "bg-muted-foreground"
-                      }`}
+                      className={`h-2 w-2 rounded-full ${session.targetMet ? "bg-success" : "bg-muted-foreground"
+                        }`}
                     />
                     <div>
                       <p className="font-medium text-sm">{session.distance} km</p>
@@ -409,6 +477,51 @@ const DetailPelari = () => {
           )}
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profil Pelari</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi nama dan pangkat pelari di sini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-pangkat" className="text-right">
+                Pangkat
+              </Label>
+              <Input
+                id="edit-pangkat"
+                value={editFormData.pangkat}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, pangkat: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-nama" className="text-right">
+                Nama
+              </Label>
+              <Input
+                id="edit-nama"
+                value={editFormData.nama}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, nama: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isUpdating}>
+              Batal
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

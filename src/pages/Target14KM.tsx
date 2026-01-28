@@ -10,7 +10,10 @@ import {
   FileText,
   Trophy,
   ChevronDown,
+  Check,
+  Loader2
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -177,6 +180,25 @@ const Target14KM = () => {
       cancelled = true;
     };
   }, []);
+
+  const handleValidate = async (runnerId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/targets/14km/validate/${runnerId}`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Gagal memvalidasi target');
+
+      toast.success('Target berhasil divalidasi');
+
+      // Update local state
+      setTargetRunners(prev => prev.map(r =>
+        r.id === runnerId ? { ...r, validationStatus: 'validated' } : r
+      ));
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memvalidasi target');
+    }
+  };
 
   const filteredRunners = useMemo(() => {
     return targetRunners.filter((runner) => {
@@ -487,11 +509,24 @@ const Target14KM = () => {
                       )}
                     </td>
                     <td className="text-right">
-                      <Link to={`/pelari/${runner.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                      <div className="flex justify-end gap-2">
+                        {runner.validationStatus === 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-success border-success/20 hover:bg-success/10"
+                            onClick={() => handleValidate(runner.id)}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Validasi
+                          </Button>
+                        )}
+                        <Link to={`/pelari/${runner.id}`}>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))

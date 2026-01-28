@@ -31,4 +31,27 @@ router.get("/14km", async (_req, res) => {
   }
 });
 
+/**
+ * POST /api/targets/14km/validate/:id
+ * Toggles or sets validation_status to 'validated'
+ */
+router.post("/14km/validate/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      "UPDATE target_14km SET validation_status = 'validated' WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Target record not found" });
+    }
+
+    res.json({ data: result.rows[0] });
+  } catch (err) {
+    console.error("POST /api/targets/14km/validate/:id error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;

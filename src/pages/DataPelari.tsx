@@ -30,6 +30,16 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Pencil, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
@@ -108,6 +118,15 @@ const DataPelari = () => {
   const [openKesatuan, setOpenKesatuan] = useState(false);
   const [openSubdis, setOpenSubdis] = useState(false);
 
+  // Edit State
+  const [editingPelari, setEditingPelari] = useState<Pelari | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    nama: '',
+    pangkat: ''
+  });
+
   // Data dummy untuk dropdown (since API doesn't have these yet)
   const kesatuanList = ['Mabes TNI', 'Puspen TNI', 'Babek TNI', 'Satsiber TNI'];
   const subdisList = ['Subdis 1', 'Subdis 2'];
@@ -174,6 +193,49 @@ const DataPelari = () => {
 
     fetchData();
   }, []);
+
+  const handleEditClick = (pelari: Pelari) => {
+    setEditingPelari(pelari);
+    setEditFormData({
+      nama: pelari.nama,
+      pangkat: pelari.pangkat
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingPelari) return;
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/runners/${editingPelari.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editFormData.nama,
+          rank: editFormData.pangkat
+        }),
+      });
+
+      if (!res.ok) throw new Error('Gagal memperbarui data');
+
+      toast.success('Data pelari berhasil diperbarui');
+      setEditDialogOpen(false);
+
+      // Update local state
+      setPelariData(prev => prev.map(p =>
+        p.id === editingPelari.id
+          ? { ...p, nama: editFormData.nama, pangkat: editFormData.pangkat, email: makeEmail(editFormData.nama, editFormData.pangkat) }
+          : p
+      ));
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memperbarui data pelari');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
 
   // Filter data
@@ -401,12 +463,18 @@ const DataPelari = () => {
                     </td>
                     <td className="text-muted-foreground">{pelari.bergabung}</td>
                     <td className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/pelari/${pelari.id}`}>
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">Detail</span>
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(pelari)}>
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/pelari/${pelari.id}`}>
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">Detail</span>
+                          </Link>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -445,6 +513,51 @@ const DataPelari = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Data Pelari</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi nama dan pangkat pelari di sini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-pangkat" className="text-right">
+                Pangkat
+              </Label>
+              <Input
+                id="edit-pangkat"
+                value={editFormData.pangkat}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, pangkat: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-nama" className="text-right">
+                Nama
+              </Label>
+              <Input
+                id="edit-nama"
+                value={editFormData.nama}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, nama: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isUpdating}>
+              Batal
+            </Button>
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
