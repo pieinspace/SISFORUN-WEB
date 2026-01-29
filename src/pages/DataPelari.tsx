@@ -49,6 +49,7 @@ interface ApiRunner {
   id: string;
   name: string;
   rank: string | null;
+  kesatuan?: string;
   totalDistance?: number;
   total_distance?: number;
   totalSessions?: number;
@@ -127,8 +128,12 @@ const DataPelari = () => {
     pangkat: ''
   });
 
-  // Data dummy untuk dropdown (since API doesn't have these yet)
-  const kesatuanList = ['Mabes TNI', 'Puspen TNI', 'Babek TNI', 'Satsiber TNI'];
+  // Dynamically generate kesatuan list from pelariData
+  const kesatuanList = useMemo(() => {
+    const uniqueKesatuan = [...new Set(pelariData.map(p => p.kesatuan).filter(k => k && k !== '-'))];
+    return uniqueKesatuan.sort();
+  }, [pelariData]);
+
   const subdisList = ['Subdis 1', 'Subdis 2'];
 
   useEffect(() => {
@@ -173,7 +178,7 @@ const DataPelari = () => {
             pangkat: rank,
             nama: r.name,
             email: makeEmail(r.name, rank),
-            kesatuan: "Mabes TNI", // Placeholder
+            kesatuan: r.kesatuan || "-", // Use data from API
             subdis: "-",          // Placeholder
             totalSesi: Number(r.totalSessions ?? r.total_sessions ?? 0),
             totalJarak: Number(r.totalDistance ?? r.total_distance ?? 0),
@@ -464,10 +469,6 @@ const DataPelari = () => {
                     <td className="text-muted-foreground">{pelari.bergabung}</td>
                     <td className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEditClick(pelari)}>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link to={`/pelari/${pelari.id}`}>
                             <Eye className="h-4 w-4" />

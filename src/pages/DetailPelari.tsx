@@ -134,76 +134,56 @@ const DetailPelari = () => {
       setErrorMsg(null);
 
       try {
-        // 1) ambil semua runners, cari id
-        const runnersRes = await fetch(`${API_BASE}/api/runners`);
-        const runnersJson = await runnersRes.json();
-        const runners: ApiRunner[] = Array.isArray(runnersJson?.data)
-          ? runnersJson.data
-          : [];
+        // 1) Fetch runner detail by ID
+        const runnerRes = await fetch(`${API_BASE}/api/runners/${runnerId}`);
+        if (!runnerRes.ok) {
+          throw new Error(`Pelari dengan ID ${runnerId} tidak ditemukan.`);
+        }
+        const runnerJson = await runnerRes.json();
+        const r = runnerJson.data;
 
-        const r = runners.find((x) => x.id === runnerId);
         if (!r) {
           throw new Error(`Pelari dengan ID ${runnerId} tidak ditemukan.`);
         }
 
-        const totalDistance =
-          typeof r.totalDistance === "number"
-            ? r.totalDistance
-            : typeof r.total_distance === "number"
-              ? r.total_distance
-              : 0;
-
-        const totalSessions =
-          typeof r.totalSessions === "number"
-            ? r.totalSessions
-            : typeof r.total_sessions === "number"
-              ? r.total_sessions
-              : 0;
+        const totalDistance = parseFloat(r.totalDistance) || 0;
+        const totalSessions = parseInt(r.totalSessions) || 0;
 
         const createdAt = (r.createdAt ?? r.created_at ?? "").toString();
         const joinDate =
           createdAt && createdAt.length >= 10 ? formatDateID(createdAt.slice(0, 10)) : "-";
 
-        // 2) ambil target 14km untuk jadi history (kalau ada record)
-        const targetRes = await fetch(`${API_BASE}/api/targets/14km`);
-        const targetJson = await targetRes.json();
-        const targets: ApiTarget14[] = Array.isArray(targetJson?.data)
-          ? targetJson.data
-          : [];
+        // 2) Fetch session history
+        const sessionsRes = await fetch(`${API_BASE}/api/runners/${runnerId}/sessions`);
+        const sessionsJson = await sessionsRes.json();
+        const sessions = Array.isArray(sessionsJson?.data) ? sessionsJson.data : [];
 
-        const myTargets = targets
-          .filter((x) => x.id === runnerId)
-          .sort((a, b) => (a.achieved_date < b.achieved_date ? 1 : -1));
-
-        const history = myTargets.map((x) => ({
-          date: formatDateID(x.achieved_date),
-          distance: Number(x.distance_km ?? 0),
-          time: x.time_taken ?? "-",
+        const history = sessions.map((x: any) => ({
+          date: formatDateID(x.date?.toString().slice(0, 10) || ""),
+          distance: Number(x.distance ?? 0),
+          time: x.time ?? "-",
           pace: x.pace ?? "-",
-          targetMet: Number(x.distance_km ?? 0) >= 14,
+          targetMet: x.targetMet ?? false,
         }));
 
-        // ambil achievedDate terbaru dari history (kalau ada)
-        const achievedDate = myTargets[0]?.achieved_date
-          ? formatDateID(myTargets[0].achieved_date)
-          : "N/A";
-
-        // avg pace & total time (karena belum ada table sessions lengkap, fallback)
-        const avgPace = myTargets[0]?.pace ?? "-";
-        const totalTime = myTargets[0]?.time_taken ?? "-";
+        // Get first session that met target for achievedDate
+        const achievedSession = sessions.find((s: any) => s.targetMet);
+        const achievedDate = achievedSession?.date
+          ? formatDateID(achievedSession.date.toString().slice(0, 10))
+          : "Belum tercapai";
 
         const rank = r.rank ?? "-";
         const name = r.name;
 
         const payload = {
-          id: r.id,
+          id: r.id.toString(),
           name,
           rank,
           email: makeEmail(name, rank),
           joinDate,
           totalDistance,
-          totalTime,
-          avgPace,
+          totalTime: r.totalTime || "-",
+          avgPace: r.avgPace || "-",
           totalSessions,
           targetAchieved: calcTargetAchieved(totalDistance),
           achievedDate,

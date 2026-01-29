@@ -75,15 +75,6 @@ const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
   "http://localhost:4000";
 
-// Data dummy untuk kesatuan dan subdis
-const kesatuanList = [
-  "Kesatuan A",
-  "Kesatuan B",
-  "Kesatuan C",
-  "Kesatuan D",
-  "Kesatuan E",
-];
-
 const subdisList = [
   "Subdis 1",
   "Subdis 2",
@@ -226,6 +217,12 @@ const Target14KM = () => {
     () => targetRunners.filter((r) => r.validationStatus === "pending").length,
     [targetRunners]
   );
+
+  // Dynamically generate kesatuan list from targetRunners
+  const kesatuanList = useMemo(() => {
+    const uniqueKesatuan = [...new Set(targetRunners.map(r => r.kesatuan).filter(k => k && k !== '-'))];
+    return uniqueKesatuan.sort();
+  }, [targetRunners]);
 
   return (
     <div className="space-y-6">
