@@ -1,17 +1,17 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useSidebar } from "@/context/SidebarContext";
+import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
-  Target,
-  FileText,
-  Settings,
-  LogOut,
   ChevronLeft,
   ChevronRight,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Target,
   User,
+  Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useSidebar } from "@/context/SidebarContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -42,11 +42,11 @@ const Sidebar = ({ onLogout }: SidebarProps) => {
       <div className="relative flex h-16 items-center px-3 border-b border-sidebar-border">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden shrink-0">
-            <img src="/logo.jpg" alt="SISFORUN" className="h-10 w-10 object-cover" />
+            <img src="/logo.jpg" alt="FORZA" className="h-10 w-10 object-cover" />
           </div>
           {!collapsed && (
             <div className="animate-fade-in min-w-0">
-              <h1 className="text-sm font-bold text-sidebar-foreground truncate">SISFORUN</h1>
+              <h1 className="text-sm font-bold text-sidebar-foreground truncate">FORZA</h1>
               <p className="text-[10px] text-sidebar-foreground/60 truncate">Admin Panel</p>
             </div>
           )}

@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface LoginProps {
   onLogin: () => void;
@@ -50,10 +50,10 @@ const Login = ({ onLogin }: LoginProps) => {
 
         <div className="relative z-10 max-w-md text-center">
           <div className="inline-flex h-24 w-24 items-center justify-center rounded-2xl mb-8 overflow-hidden">
-            <img src="/logo.jpg" alt="SISFORUN" className="h-24 w-24 object-cover" />
+            <img src="/logo.jpg" alt="FORZA" className="h-24 w-24 object-cover" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">
-            SISFORUN
+            FORZA
           </h1>
           <p className="text-lg text-white/70 mb-8">
             Sistem monitoring dan tracking aktivitas lari. Pantau pencapaian target 14 KM pelari dengan mudah.
@@ -85,7 +85,7 @@ const Login = ({ onLogin }: LoginProps) => {
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-xl mb-4 overflow-hidden">
               <img src="/logo.jpg" alt="SISFORUN" className="h-16 w-16 object-cover" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">SISFORUN</h1>
+            <h1 className="text-2xl font-bold text-foreground">FORZA</h1>
           </div>
 
           <div className="space-y-6">

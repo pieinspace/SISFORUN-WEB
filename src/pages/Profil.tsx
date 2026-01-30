@@ -1,20 +1,20 @@
-import { useState } from "react";
-import { Save, User, Camera, Mail, Phone, MapPin, Calendar } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar, Camera, Mail, MapPin, Phone, Save, User } from "lucide-react";
+import { useState } from "react";
 
 const Profil = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    name: "Admin SISFORUN",
-    email: "admin@sisforun.id",
+    name: "Admin FORZA",
+    email: "admin@forza.id",
     phone: "+62 812-3456-7890",
     location: "Jakarta, Indonesia",
-    bio: "Administrator sistem tracking lari SISFORUN. Bertanggung jawab mengelola data pelari dan memantau progress latihan.",
+    bio: "Administrator sistem tracking lari FORZA. Bertanggung jawab mengelola data pelari dan memantau progress latihan.",
     joinDate: "Januari 2024",
     avatar: ""
   });

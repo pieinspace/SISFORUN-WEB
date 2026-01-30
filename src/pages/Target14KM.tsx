@@ -1,34 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Search,
-  Download,
-  Eye,
-  CheckCircle2,
-  Clock,
-  FileSpreadsheet,
-  FileText,
-  Trophy,
-  ChevronDown,
-  Check,
-  Loader2
-} from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Command,
   CommandEmpty,
@@ -38,14 +8,43 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Search,
+  Trophy
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 interface TargetRunner {
   id: string;
+  sessionId: string; // run_session id untuk validasi
   name: string;
   rank: string;
   distance: number;
@@ -59,7 +58,8 @@ interface TargetRunner {
 }
 
 type ApiTargetRow = {
-  id: string; // runner_id
+  id: string; // user_id
+  session_id: string; // run_session id
   name: string;
   rank: string;
   distance_km: number;
@@ -146,6 +146,7 @@ const Target14KM = () => {
 
         const mapped: TargetRunner[] = data.map((r) => ({
           id: r.id,
+          sessionId: r.session_id,
           name: r.name,
           rank: r.rank,
           distance: Number(r.distance_km ?? 0),
@@ -172,18 +173,18 @@ const Target14KM = () => {
     };
   }, []);
 
-  const handleValidate = async (runnerId: string) => {
+  const handleValidate = async (sessionId: string, odebugId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/targets/14km/validate/${runnerId}`, {
+      const res = await fetch(`${API_BASE}/api/targets/14km/validate/${sessionId}`, {
         method: 'POST'
       });
       if (!res.ok) throw new Error('Gagal memvalidasi target');
 
       toast.success('Target berhasil divalidasi');
 
-      // Update local state
+      // Update local state using sessionId
       setTargetRunners(prev => prev.map(r =>
-        r.id === runnerId ? { ...r, validationStatus: 'validated' } : r
+        r.sessionId === sessionId ? { ...r, validationStatus: 'validated' } : r
       ));
     } catch (err) {
       console.error(err);
@@ -512,7 +513,7 @@ const Target14KM = () => {
                             variant="outline"
                             size="sm"
                             className="text-success border-success/20 hover:bg-success/10"
-                            onClick={() => handleValidate(runner.id)}
+                            onClick={() => handleValidate(runner.sessionId, runner.id)}
                           >
                             <Check className="h-4 w-4 mr-1" />
                             Validasi

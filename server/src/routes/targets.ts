@@ -11,7 +11,8 @@ router.get("/14km", async (_req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        rs.id AS id,
+        u.id AS id,
+        rs.id AS session_id,
         u.name,
         u.pangkat AS rank,
         rs.distance_km,

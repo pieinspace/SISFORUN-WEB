@@ -1,13 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Search, Download, ChevronDown, FileText, FileSpreadsheet, Eye, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Command,
   CommandEmpty,
@@ -16,6 +7,22 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -28,17 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Pencil, Loader2 } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AlertCircle, CheckCircle2, ChevronDown, Clock, Download, Eye, FileSpreadsheet, FileText, Loader2, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 const API_BASE =
@@ -118,6 +117,10 @@ const DataPelari = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [openKesatuan, setOpenKesatuan] = useState(false);
   const [openSubdis, setOpenSubdis] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   // Edit State
   const [editingPelari, setEditingPelari] = useState<Pelari | null>(null);
@@ -253,6 +256,34 @@ const DataPelari = () => {
       return matchNama && matchKesatuan && matchSubdis && matchStatus;
     });
   }, [pelariData, searchNama, filterKesatuan, filterSubdis, filterStatus]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchNama, filterKesatuan, filterSubdis, filterStatus]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className="space-y-6">
@@ -440,8 +471,8 @@ const DataPelari = () => {
                     Memuat data...
                   </td>
                 </tr>
-              ) : filteredData.length > 0 ? (
-                filteredData.map((pelari) => (
+              ) : paginatedData.length > 0 ? (
+                paginatedData.map((pelari) => (
                   <tr key={pelari.id}>
                     <td className="font-medium text-sm text-foreground">{pelari.pangkat}</td>
                     <td className="font-medium text-foreground">{pelari.nama}</td>
@@ -493,22 +524,38 @@ const DataPelari = () => {
         {/* Pagination */}
         <div className="px-5 py-4 border-t border-border flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {filteredData.length} dari {pelariData.length} pelari
+            Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredData.length)} dari {filteredData.length} pelari
           </p>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            >
               ‹
             </Button>
-            <Button variant="default" size="sm" className="h-8 w-8 p-0">
-              1
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-              2
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-              3
-            </Button>
-            <Button variant="outline" size="sm" disabled>
+            {getPageNumbers().map((page, idx) => (
+              typeof page === 'number' ? (
+                <Button
+                  key={idx}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ) : (
+                <span key={idx} className="h-8 w-8 flex items-center justify-center text-muted-foreground">...</span>
+              )
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages || totalPages === 0}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            >
               ›
             </Button>
           </div>

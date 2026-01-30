@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
-import { cn } from "@/lib/utils";
-import Sidebar from "./Sidebar";
-import Header from "./Header";
 import { useSidebar } from "@/context/SidebarContext";
+import { cn } from "@/lib/utils";
+import { ReactNode } from "react";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -16,7 +16,7 @@ const DashboardLayout = ({ children, onLogout }: DashboardLayoutProps) => {
     <div className="min-h-screen bg-background">
       <Sidebar onLogout={onLogout} />
       <div className={cn("transition-all duration-300", collapsed ? "ml-[72px]" : "ml-64")}>
-        <Header adminName="Admin SISFORUN" onLogout={onLogout} />
+        <Header adminName="Admin FORZA" onLogout={onLogout} />
         <main className="p-6">{children}</main>
       </div>
     </div>

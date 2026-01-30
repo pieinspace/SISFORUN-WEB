@@ -71,3 +71,36 @@ export default defineConfig([
   },
 ])
 ```
+
+
+No	Nama	NRP	Password	Role
+1	Andi Pratama	111111	password123	militer
+2	Budi Santoso	111112	password123	militer
+3	Citra Dewi	222221	password123	asn
+4	Diana Putri	222222	password123	asn
+5	Fitri Rahmawati	888888	password123	asn
+6	Eko Saputra	999999	password123	militer
+User Militer Baru (10 user)
+No	Nama	NRP	Password	Kesatuan	Pangkat
+1	Hendra Wijaya	200101	password123	Kodam Jaya	Kolonel
+2	Agus Setiawan	200102	password123	Kodam Siliwangi	Letnan Kolonel
+3	Bambang Susilo	200103	password123	Kodam Iskandar Muda	Mayor
+4	Rizky Pratama	200104	password123	Kodam Brawijaya	Kapten
+5	Dedi Kurniawan	200105	password123	Kodam Diponegoro	Lettu
+6	Fajar Nugroho	200106	password123	Kopassus	Letda
+7	Gunawan Santoso	200107	password123	Kostrad	Serma
+8	Irfan Hakim	200108	password123	Marinir	Serka
+9	Joko Purnomo	200109	password123	Paskhas	Sertu
+10	Krisna Murti	200110	password123	Zeni AD	Kopral
+User ASN Baru (10 user)
+No	Nama	NRP	Password	Kesatuan	Pangkat
+1	Lestari Dewi	400101	password123	Mabes TNI AD	PNS Gol IV/a
+2	Maya Sari	400102	password123	Puspen TNI	PNS Gol IV/b
+3	Nur Hidayah	400103	password123	Kemhan RI	PNS Gol III/d
+4	Oktavia Putri	400104	password123	Ditjen Strahan	PNS Gol III/c
+5	Priyanti Wulan	400105	password123	Babek TNI	PNS Gol III/b
+6	Qonita Rahma	400106	password123	Satsiber TNI	PNS Gol III/a
+7	Ratna Kusuma	400107	password123	Puskom TNI	PNS Gol II/d
+8	Sinta Maharani	400108	password123	Puskes TNI	PNS Gol II/c
+9	Tika Permata	400109	password123	Rohmin TNI	PNS Gol II/b
+10	Umi Kalsum	400110	password123	Pusinfolahta	PNS Gol II/a
