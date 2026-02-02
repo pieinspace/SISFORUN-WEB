@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -38,6 +39,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface TargetRunner {
   id: string;
@@ -145,10 +147,12 @@ const Target14KM = () => {
   // Fetch Master Data on Mount
   useEffect(() => {
     const fetchMasterData = async () => {
+      const token = localStorage.getItem("admin_token");
+      const headers = { "Authorization": `Bearer ${token}` };
       try {
         const [ktmRes, corpsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/master/kesatuan`),
-          fetch(`${API_BASE}/api/master/corps`)
+          fetch(`${API_BASE}/api/master/kesatuan`, { headers }),
+          fetch(`${API_BASE}/api/master/corps`, { headers })
         ]);
         const ktmJson = await ktmRes.json();
         const corpsJson = await corpsRes.json();
@@ -189,7 +193,10 @@ const Target14KM = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/targets/14km`);
+        const token = localStorage.getItem("admin_token");
+        const res = await fetch(`${API_BASE}/api/targets/14km`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
         const json = await res.json();
         const data: ApiTargetRow[] = Array.isArray(json?.data) ? json.data : [];
 
@@ -340,26 +347,26 @@ const Target14KM = () => {
 
           {/* Filter Kesatuan - Searchable Dropdown */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Kesatuan
-            </label>
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Kotama
+            </Label>
             <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={openKesatuan}
-                  className="w-full justify-between"
+                  className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
                 >
-                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kesatuan"}
+                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
+              <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
+                  <CommandInput placeholder="Cari kotama..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada kesatuan.</CommandEmpty>
+                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
                       <CommandItem
                         value=""
@@ -368,7 +375,13 @@ const Target14KM = () => {
                           setOpenKesatuan(false);
                         }}
                       >
-                        Semua Kesatuan
+                        <CheckCircle2
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            filterKesatuan === "" ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        Semua Kotama
                       </CommandItem>
                       {masterKesatuan.map((k) => (
                         <CommandItem
@@ -379,6 +392,12 @@ const Target14KM = () => {
                             setOpenKesatuan(false);
                           }}
                         >
+                          <CheckCircle2
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              filterKesatuan === k.kd_ktm ? "opacity-100" : "opacity-0"
+                            )}
+                          />
                           {k.ur_ktm}
                         </CommandItem>
                       ))}
@@ -389,28 +408,29 @@ const Target14KM = () => {
             </Popover>
           </div>
 
-          {/* Filter Subdis - Searchable Dropdown */}
+          {/* Filter Kesatuan - Searchable Dropdown */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Subdis
-            </label>
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Kesatuan
+            </Label>
             <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={openSubdis}
-                  className="w-full justify-between"
+                  className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
+                  disabled={!filterKesatuan}
                 >
-                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Subdis"}
+                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
+              <PopoverContent className="w-[250px] p-0" align="start">
                 <Command>
-                  <CommandInput placeholder="Cari subdis..." />
+                  <CommandInput placeholder="Cari kesatuan..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada subdis.</CommandEmpty>
+                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
                       <CommandItem
                         value=""
@@ -419,7 +439,13 @@ const Target14KM = () => {
                           setOpenSubdis(false);
                         }}
                       >
-                        Semua Subdis
+                        <CheckCircle2
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            filterSubdis === "" ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        Semua Kesatuan
                       </CommandItem>
                       {masterSubdis.map((s) => (
                         <CommandItem
@@ -430,6 +456,12 @@ const Target14KM = () => {
                             setOpenSubdis(false);
                           }}
                         >
+                          <CheckCircle2
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              filterSubdis === s.kd_smkl ? "opacity-100" : "opacity-0"
+                            )}
+                          />
                           {s.ur_smkl}
                         </CommandItem>
                       ))}
@@ -486,8 +518,9 @@ const Target14KM = () => {
             <thead>
               <tr>
                 <th>Pangkat</th>
-                <th>Nama Pelari</th>
+                <th>Nama</th>
                 <th>Corps</th>
+                <th>Kotama</th>
                 <th>Kesatuan</th>
                 <th>Jarak Tempuh</th>
                 <th>Waktu Tempuh</th>

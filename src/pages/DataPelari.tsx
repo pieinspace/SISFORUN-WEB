@@ -137,11 +137,13 @@ const DataPelari = () => {
   // Fetch Master Data on Mount
   useEffect(() => {
     const fetchMasterData = async () => {
+      const token = localStorage.getItem("admin_token");
+      const headers = { "Authorization": `Bearer ${token}` };
       try {
         const [ktmRes, corpsRes, pktRes] = await Promise.all([
-          fetch(`${API_BASE}/api/master/kesatuan`),
-          fetch(`${API_BASE}/api/master/corps`),
-          fetch(`${API_BASE}/api/master/pangkat`)
+          fetch(`${API_BASE}/api/master/kesatuan`, { headers }),
+          fetch(`${API_BASE}/api/master/corps`, { headers }),
+          fetch(`${API_BASE}/api/master/pangkat`, { headers })
         ]);
 
         const [ktmJson, corpsJson, pktJson] = await Promise.all([
@@ -187,12 +189,15 @@ const DataPelari = () => {
       setLoading(true);
       try {
         // Fetch Runners
-        const runnersRes = await fetch(`${API_BASE}/api/runners`);
+        const token = localStorage.getItem("admin_token");
+        const headers = { "Authorization": `Bearer ${token}` };
+
+        const runnersRes = await fetch(`${API_BASE}/api/runners`, { headers });
         const runnersJson = await runnersRes.json();
         const runners: ApiRunner[] = Array.isArray(runnersJson?.data) ? runnersJson.data : [];
 
         // Fetch Targets
-        const targetsRes = await fetch(`${API_BASE}/api/targets/14km`);
+        const targetsRes = await fetch(`${API_BASE}/api/targets/14km`, { headers });
         const targetsJson = await targetsRes.json();
         const targets: ApiTarget14[] = Array.isArray(targetsJson?.data) ? targetsJson.data : [];
 
@@ -317,9 +322,9 @@ const DataPelari = () => {
             </div>
           </div>
 
-          {/* Filter Kesatuan */}
+          {/* Filter Kotama */}
           <div className="space-y-2">
-            <Label>Kesatuan</Label>
+            <Label>Kotama</Label>
             <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
               <PopoverTrigger asChild>
                 <Button
@@ -328,15 +333,15 @@ const DataPelari = () => {
                   aria-expanded={openKesatuan}
                   className="w-full justify-between font-normal"
                 >
-                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kesatuan"}
+                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0">
                 <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
+                  <CommandInput placeholder="Cari kotama..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada kesatuan.</CommandEmpty>
+                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
                       <CommandItem
                         value=""
@@ -345,7 +350,7 @@ const DataPelari = () => {
                           setOpenKesatuan(false);
                         }}
                       >
-                        Semua Kesatuan
+                        Semua Kotama
                       </CommandItem>
                       {masterKesatuan.map((k) => (
                         <CommandItem
@@ -366,9 +371,9 @@ const DataPelari = () => {
             </Popover>
           </div>
 
-          {/* Filter Subdis */}
+          {/* Filter Kesatuan */}
           <div className="space-y-2">
-            <Label>Subdis</Label>
+            <Label>Kesatuan</Label>
             <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
               <PopoverTrigger asChild>
                 <Button
@@ -376,16 +381,17 @@ const DataPelari = () => {
                   role="combobox"
                   aria-expanded={openSubdis}
                   className="w-full justify-between font-normal"
+                  disabled={!filterKesatuan}
                 >
-                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Subdis"}
+                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[200px] p-0">
                 <Command>
-                  <CommandInput placeholder="Cari subdis..." />
+                  <CommandInput placeholder="Cari kesatuan..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada subdis.</CommandEmpty>
+                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
                       <CommandItem
                         value=""
@@ -394,7 +400,7 @@ const DataPelari = () => {
                           setOpenSubdis(false);
                         }}
                       >
-                        Semua Subdis
+                        Semua Kesatuan
                       </CommandItem>
                       {masterSubdis.map((s) => (
                         <CommandItem
@@ -444,8 +450,8 @@ const DataPelari = () => {
                 <th>Pangkat</th>
                 <th>Nama</th>
                 <th>Corps</th>
+                <th>Kotama</th>
                 <th>Kesatuan</th>
-                <th>Subdis</th>
                 <th>Total Sesi</th>
                 <th>Total Jarak</th>
                 <th>Status Target</th>

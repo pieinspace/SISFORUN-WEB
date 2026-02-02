@@ -51,6 +51,9 @@ const Login = ({ onLogin }: LoginProps) => {
       if (data.success) {
         // Simpan token/user info jika perlu
         localStorage.setItem("admin_user", JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem("admin_token", data.token);
+        }
         onLogin();
         navigate("/");
       } else {

@@ -26,6 +26,19 @@ interface Admin {
   password?: string;
   role: string;
   is_active?: boolean;
+  kd_ktm?: string;
+  kd_smkl?: string;
+}
+
+interface MasterKotama {
+  kd_ktm: string;
+  ur_ktm: string;
+}
+
+interface MasterKesatuan {
+  kd_ktm: string;
+  kd_smkl: string;
+  ur_smkl: string;
 }
 
 const DEFAULT_ADMINS: Admin[] = [
@@ -59,8 +72,41 @@ const Pengaturan = () => {
   const [newAdmin, setNewAdmin] = useState({
     username: "",
     password: "",
-    role: "Admin",
+    role: "Admin Kotama",
+    kd_ktm: "",
+    kd_smkl: "",
   });
+
+  const [masterKotama, setMasterKotama] = useState<MasterKotama[]>([]);
+  const [masterKesatuan, setMasterKesatuan] = useState<MasterKesatuan[]>([]);
+
+  // Fetch Master Data
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const resKtm = await fetch(`${API_BASE_URL.replace('/auth', '')}/master/kesatuan`);
+        const jsonKtm = await resKtm.json();
+        if (jsonKtm.success) setMasterKotama(jsonKtm.data);
+      } catch (e) { console.error(e); }
+    };
+    fetchMasters();
+  }, []);
+
+  // Fetch Subdis when kotama changes
+  useEffect(() => {
+    if (!newAdmin.kd_ktm) {
+      setMasterKesatuan([]);
+      return;
+    }
+    const fetchSubdis = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL.replace('/auth', '')}/master/subdis/${newAdmin.kd_ktm}`);
+        const json = await res.json();
+        if (json.success) setMasterKesatuan(json.data);
+      } catch (e) { console.error(e); }
+    };
+    fetchSubdis();
+  }, [newAdmin.kd_ktm]);
 
   const handleAddAdmin = async () => {
     if (!newAdmin.username || !newAdmin.password) return;
@@ -73,15 +119,18 @@ const Pengaturan = () => {
         body: JSON.stringify({
           username: newAdmin.username,
           password: newAdmin.password,
-          role: newAdmin.role === "Super Admin" ? "superadmin" : "admin",
-          name: newAdmin.username
+          role: newAdmin.role === "Super Admin" ? "superadmin" :
+            newAdmin.role === "Admin Kotama" ? "admin_kotama" : "admin_satuan",
+          name: newAdmin.username,
+          kd_ktm: newAdmin.kd_ktm,
+          kd_smkl: newAdmin.kd_smkl
         }),
       });
 
       const data = await response.json();
       if (data.success) {
         await fetchAdmins();
-        setNewAdmin({ username: "", password: "", role: "Admin" });
+        setNewAdmin({ username: "", password: "", role: "Admin Kotama", kd_ktm: "", kd_smkl: "" });
         setIsAddDialogOpen(false);
       } else {
         alert(data.message || "Gagal menambah admin");
@@ -193,11 +242,51 @@ const Pengaturan = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Super Admin">Super Admin</SelectItem>
-                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Admin Kotama">Admin Kotama</SelectItem>
+                      <SelectItem value="Admin Satuan">Admin Satuan</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {(newAdmin.role === "Admin Kotama" || newAdmin.role === "Admin Satuan") && (
+                  <div className="grid gap-2">
+                    <Label>Kotama</Label>
+                    <Select
+                      value={newAdmin.kd_ktm}
+                      onValueChange={(val) => setNewAdmin({ ...newAdmin, kd_ktm: val, kd_smkl: "" })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Kotama" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {masterKotama.map((k) => (
+                          <SelectItem key={k.kd_ktm} value={k.kd_ktm}>{k.ur_ktm}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {newAdmin.role === "Admin Satuan" && newAdmin.kd_ktm && (
+                  <div className="grid gap-2">
+                    <Label>Kesatuan</Label>
+                    <Select
+                      value={newAdmin.kd_smkl}
+                      onValueChange={(val) => setNewAdmin({ ...newAdmin, kd_smkl: val })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih Kesatuan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {masterKesatuan.map((s) => (
+                          <SelectItem key={s.kd_smkl} value={s.kd_smkl}>{s.ur_smkl}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Batal</Button>
                 <Button onClick={handleAddAdmin} disabled={isLoading}>
@@ -223,7 +312,11 @@ const Pengaturan = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground capitalize">{admin.role}</span>
+                <span className="text-sm text-muted-foreground">
+                  {admin.role === 'superadmin' ? 'Super Admin' :
+                    admin.role === 'admin_kotama' ? 'Admin Kotama' :
+                      admin.role === 'admin_satuan' ? 'Admin Satuan' : admin.role}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db";
+import { authenticateToken } from "../middleware/authMiddleware";
 
 const router = Router();
 
@@ -7,8 +8,21 @@ const router = Router();
  * GET /api/targets/14km
  * Data untuk halaman Target 14 KM dan tabel dashboard "Target 14 KM Tercapai"
  */
-router.get("/14km", async (_req, res) => {
+router.get("/14km", authenticateToken, async (req, res) => {
   try {
+    const user = req.user;
+    let whereClause = "WHERE rs.distance_km >= 14";
+    const params: any[] = [];
+
+    if (user?.role === 'admin_kotama' && user.kd_ktm) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1}`;
+      params.push(user.kd_ktm);
+    } else if (user?.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1} AND u.kd_smkl = $${params.length + 2}`;
+      params.push(user.kd_ktm);
+      params.push(user.kd_smkl);
+    }
+
     const result = await pool.query(`
       SELECT
         u.id AS id,
@@ -29,13 +43,13 @@ router.get("/14km", async (_req, res) => {
         p.ur_pkt AS pangkat_name
       FROM run_sessions rs
       JOIN users u ON u.id = rs.user_id
-      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
-      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN kotama k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN kesatuan s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
       LEFT JOIN corps c ON u.kd_corps = c.kd_corps
       LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
-      WHERE rs.distance_km >= 14
+      ${whereClause}
       ORDER BY rs.date_created DESC
-    `);
+    `, params);
 
     // Transform data to match frontend expectations
     const data = result.rows.map((row) => {
@@ -72,18 +86,38 @@ router.get("/14km", async (_req, res) => {
  * GET /api/targets/weekly-stats
  * Statistik jarak mingguan untuk DistanceChart (4 minggu terakhir)
  */
-router.get("/weekly-stats", async (_req, res) => {
+router.get("/weekly-stats", authenticateToken, async (req, res) => {
   try {
+    const user = req.user;
+    let whereClause = "WHERE rs.date_created >= NOW() - INTERVAL '4 weeks'";
+    const params: any[] = [];
+
+    // Note: For stats, we need to join users table to filter by scope
+    let joinUsers = "";
+    if (user?.role === 'admin_kotama' || user?.role === 'admin_satuan') {
+      joinUsers = "JOIN users u ON u.id = rs.user_id";
+    }
+
+    if (user?.role === 'admin_kotama' && user.kd_ktm) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1}`;
+      params.push(user.kd_ktm);
+    } else if (user?.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1} AND u.kd_smkl = $${params.length + 2}`;
+      params.push(user.kd_ktm);
+      params.push(user.kd_smkl);
+    }
+
     const result = await pool.query(`
       SELECT
         DATE_TRUNC('week', rs.date_created) AS week_start,
         SUM(rs.distance_km) AS total_distance,
         COUNT(rs.id) AS total_sessions
       FROM run_sessions rs
-      WHERE rs.date_created >= NOW() - INTERVAL '4 weeks'
+      ${joinUsers}
+      ${whereClause}
       GROUP BY DATE_TRUNC('week', rs.date_created)
       ORDER BY week_start ASC
-    `);
+    `, params);
 
     // Transform to chart-friendly format
     const data = result.rows.map((row, index) => ({

@@ -9,3 +9,5 @@ const port = process.env.PORT || 4000;
   await dbHealthcheck();
   app.listen(port, () => console.log(`Server listening on http://localhost:${port}`));
 })();
+
+// restart trigger

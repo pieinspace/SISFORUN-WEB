@@ -1,8 +1,23 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 
-export const getRunners = async (_req: Request, res: Response) => {
+import { authenticateToken } from "../middleware/authMiddleware";
+
+export const getRunners = async (req: Request, res: Response) => {
   try {
+    const user = req.user;
+    let whereClause = "WHERE u.role != 'admin'";
+    const params: any[] = [];
+
+    if (user?.role === 'admin_kotama' && user.kd_ktm) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1}`;
+      params.push(user.kd_ktm);
+    } else if (user?.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+      whereClause += ` AND u.kd_ktm = $${params.length + 1} AND u.kd_smkl = $${params.length + 2}`;
+      params.push(user.kd_ktm);
+      params.push(user.kd_smkl);
+    }
+
     const result = await pool.query(`
       SELECT
         u.id,
@@ -22,11 +37,11 @@ export const getRunners = async (_req: Request, res: Response) => {
         COUNT(rs.id) AS "totalSessions"
       FROM users u
       LEFT JOIN run_sessions rs ON rs.user_id = u.id
-      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
-      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN kotama k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN kesatuan s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
       LEFT JOIN corps c ON u.kd_corps = c.kd_corps
       LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
-      WHERE u.role != 'admin'
+      ${whereClause}
       GROUP BY 
         u.id, u.name, u.pangkat, u.role, u.created_at, 
         u.kd_ktm, u.kd_smkl, u.kd_corps, u.kd_pkt,
@@ -37,7 +52,7 @@ export const getRunners = async (_req: Request, res: Response) => {
           ELSE 0
         END DESC,
         u.name ASC
-    `);
+    `, params);
 
     res.json({ data: result.rows });
   } catch (err) {
@@ -71,8 +86,8 @@ export const getRunnerById = async (req: Request, res: Response) => {
         COUNT(rs.id) AS "totalSessions"
       FROM users u
       LEFT JOIN run_sessions rs ON rs.user_id = u.id
-      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
-      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN kotama k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN kesatuan s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
       LEFT JOIN corps c ON u.kd_corps = c.kd_corps
       LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
       WHERE u.id = $1

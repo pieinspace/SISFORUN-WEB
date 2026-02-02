@@ -41,13 +41,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     // total runners
-    fetch(`${API_BASE}/api/runners`)
+    const token = localStorage.getItem("admin_token");
+    const headers = { "Authorization": `Bearer ${token}` };
+
+    fetch(`${API_BASE}/api/runners`, { headers })
       .then((r) => r.json())
       .then((j) => setRunners(Array.isArray(j?.data) ? j.data : []))
       .catch(() => setRunners([]));
 
     // target 14km
-    fetch(`${API_BASE}/api/targets/14km`)
+    fetch(`${API_BASE}/api/targets/14km`, { headers })
       .then((r) => r.json())
       .then((j) => setTargets(Array.isArray(j?.data) ? j.data : []))
       .catch(() => setTargets([]));
@@ -70,6 +73,8 @@ const Dashboard = () => {
       distanceKm: Number(t.distance_km),
       targetKm: 14,
       status: t.validation_status, // RecentRunnersTable sudah handle pending/validated
+      kotama: t.kesatuan_name || "-",
+      kesatuan: t.subdis_name || "-",
     }));
   }, [targets]);
 

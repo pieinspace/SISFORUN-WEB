@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,10 @@ type ApiTarget14 = {
   validation_status: "validated" | "pending";
   kesatuan?: string;
   subdis?: string;
+  kd_ktm?: string;
+  kd_smkl?: string;
+  kesatuan_name?: string;
+  subdis_name?: string;
 };
 
 type ReportRow = {
@@ -54,6 +59,19 @@ type ReportRow = {
   ket: string;
   kesatuan: string;
   subdis: string;
+  kd_ktm: string;
+  kd_smkl: string;
+};
+
+type MasterKesatuan = {
+  kd_ktm: string;
+  ur_ktm: string;
+};
+
+type MasterSubdis = {
+  kd_ktm: string;
+  kd_smkl: string;
+  ur_smkl: string;
 };
 
 const formatDateID = (yyyyMmDd: string) => {
@@ -66,22 +84,7 @@ const formatDateID = (yyyyMmDd: string) => {
   }).format(d);
 };
 
-// Data dummy untuk kesatuan dan subdis
-const kesatuanList = [
-  "Kesatuan A",
-  "Kesatuan B",
-  "Kesatuan C",
-  "Kesatuan D",
-  "Kesatuan E",
-];
-
-const subdisList = [
-  "Subdis 1",
-  "Subdis 2",
-  "Subdis 3",
-  "Subdis 4",
-  "Subdis 5",
-];
+// Data dummy dihapus, akan fetch dari API
 
 const Laporan = () => {
   const [filterKesatuan, setFilterKesatuan] = useState("");
@@ -94,6 +97,10 @@ const Laporan = () => {
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Master Data State
+  const [masterKesatuan, setMasterKesatuan] = useState<MasterKesatuan[]>([]);
+  const [masterSubdis, setMasterSubdis] = useState<MasterSubdis[]>([]);
+
   /* ================== LOAD DATA ASLI DARI API ================== */
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +108,10 @@ const Laporan = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/api/targets/14km`);
+        const token = localStorage.getItem("admin_token");
+        const res = await fetch(`${API_BASE}/api/targets/14km`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
         const json = await res.json();
         const data: ApiTarget14[] = Array.isArray(json?.data) ? json.data : [];
 
@@ -117,8 +127,10 @@ const Laporan = () => {
           jarakKm: Number(x.distance_km ?? 0),
           dataAplikasi: x.time_taken ? `${x.time_taken} / ${x.pace}` : "-",
           ket: x.validation_status === "validated" ? "" : "Belum Valid",
-          kesatuan: x.kesatuan ?? "Kesatuan A",
-          subdis: x.subdis ?? "Subdis 1",
+          kesatuan: x.kesatuan_name ?? x.kesatuan ?? "-",
+          subdis: x.subdis_name ?? x.subdis ?? "-",
+          kd_ktm: x.kd_ktm ?? "",
+          kd_smkl: x.kd_smkl ?? "",
         }));
 
         if (!cancelled) setRows(mapped);
@@ -135,11 +147,48 @@ const Laporan = () => {
     };
   }, []);
 
+  /* ================== LOAD MASTER DATA ================== */
+  useEffect(() => {
+    const loadMaster = async () => {
+      try {
+        const token = localStorage.getItem("admin_token");
+        const resKtm = await fetch(`${API_BASE}/api/master/kesatuan`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const jsonKtm = await resKtm.json();
+        if (jsonKtm.success) setMasterKesatuan(jsonKtm.data);
+      } catch (e) {
+        console.error("Failed to fetch master kotama", e);
+      }
+    };
+    loadMaster();
+  }, []);
+
+  useEffect(() => {
+    if (!filterKesatuan) {
+      setMasterSubdis([]);
+      return;
+    }
+    const loadSubdis = async () => {
+      const token = localStorage.getItem("admin_token");
+      try {
+        const resSmkl = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const jsonSmkl = await resSmkl.json();
+        if (jsonSmkl.success) setMasterSubdis(jsonSmkl.data);
+      } catch (e) {
+        console.error("Failed to fetch master kesatuan", e);
+      }
+    };
+    loadSubdis();
+  }, [filterKesatuan]);
+
   /* ================== FILTER DATA BERDASARKAN KESATUAN & SUBDIS ================== */
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
-      const matchKesatuan = !filterKesatuan || row.kesatuan === filterKesatuan;
-      const matchSubdis = !filterSubdis || row.subdis === filterSubdis;
+      const matchKesatuan = !filterKesatuan || row.kd_ktm === filterKesatuan;
+      const matchSubdis = !filterSubdis || row.kd_smkl === filterSubdis;
       return matchKesatuan && matchSubdis;
     });
   }, [rows, filterKesatuan, filterSubdis]);
@@ -216,23 +265,24 @@ const Laporan = () => {
       {/* ================= FILTER KESATUAN & SUBDIS ================= */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-4">
         <div className="flex items-center gap-4">
-          <div className="flex-1">
+          <div className="space-y-2">
+            <Label>Kotama</Label>
             <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={openKesatuan} className="w-full justify-between">
-                  {filterKesatuan || "Semua Kesatuan"}
+                <Button variant="outline" role="combobox" aria-expanded={openKesatuan} className="w-[200px] justify-between">
+                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
+              <PopoverContent className="w-[200px] p-0">
                 <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
+                  <CommandInput placeholder="Cari kotama..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada kesatuan.</CommandEmpty>
+                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
-                      <CommandItem value="" onSelect={() => { setFilterKesatuan(""); setOpenKesatuan(false); }}>Semua Kesatuan</CommandItem>
-                      {kesatuanList.map((kesatuan) => (
-                        <CommandItem key={kesatuan} value={kesatuan} onSelect={(currentValue) => { setFilterKesatuan(currentValue === filterKesatuan ? "" : currentValue); setOpenKesatuan(false); }}>{kesatuan}</CommandItem>
+                      <CommandItem value="" onSelect={() => { setFilterKesatuan(""); setFilterSubdis(""); setOpenKesatuan(false); }}>Semua Kotama</CommandItem>
+                      {masterKesatuan.map((k) => (
+                        <CommandItem key={k.kd_ktm} value={k.ur_ktm} onSelect={() => { setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm); setFilterSubdis(""); setOpenKesatuan(false); }}>{k.ur_ktm}</CommandItem>
                       ))}
                     </CommandGroup>
                   </CommandList>
@@ -241,23 +291,24 @@ const Laporan = () => {
             </Popover>
           </div>
 
-          <div className="flex-1">
+          <div className="space-y-2">
+            <Label>Kesatuan</Label>
             <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
               <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={openSubdis} className="w-full justify-between">
-                  {filterSubdis || "Semua Subdis"}
+                <Button variant="outline" role="combobox" aria-expanded={openSubdis} className="w-[200px] justify-between">
+                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[300px] p-0">
+              <PopoverContent className="w-[200px] p-0">
                 <Command>
-                  <CommandInput placeholder="Cari subdis..." />
+                  <CommandInput placeholder="Cari kesatuan..." />
                   <CommandList>
-                    <CommandEmpty>Tidak ada subdis.</CommandEmpty>
+                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
                     <CommandGroup>
-                      <CommandItem value="" onSelect={() => { setFilterSubdis(""); setOpenSubdis(false); }}>Semua Subdis</CommandItem>
-                      {subdisList.map((subdis) => (
-                        <CommandItem key={subdis} value={subdis} onSelect={(currentValue) => { setFilterSubdis(currentValue === filterSubdis ? "" : currentValue); setOpenSubdis(false); }}>{subdis}</CommandItem>
+                      <CommandItem value="" onSelect={() => { setFilterSubdis(""); setOpenSubdis(false); }}>Semua Kesatuan</CommandItem>
+                      {masterSubdis.map((s) => (
+                        <CommandItem key={s.kd_smkl} value={s.ur_smkl} onSelect={() => { setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl); setOpenSubdis(false); }}>{s.ur_smkl}</CommandItem>
                       ))}
                     </CommandGroup>
                   </CommandList>

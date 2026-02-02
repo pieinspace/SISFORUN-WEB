@@ -15,7 +15,7 @@ export default function DataPelariToolbar() {
 
   return (
     <div className="space-y-4">
-      {/* ===== GARIS BIRU ATAS (Dropdown Kesatuan) ===== */}
+      {/* ===== GARIS BIRU ATAS (Dropdown Kotama) ===== */}
       <div className="flex items-center gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -61,7 +61,7 @@ export default function DataPelariToolbar() {
           <Input placeholder={`Cari berdasarkan ${filterBy.toLowerCase()}...`} />
         </div>
 
-        {/* KANAN — Subdis (Export) */}
+        {/* KANAN — Kesatuan (Export) */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button>

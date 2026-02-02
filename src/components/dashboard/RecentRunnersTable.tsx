@@ -14,6 +14,8 @@ interface Runner {
   targetStatus?: string;
   validationStatus?: string;
   targetKm?: number;
+  kotama?: string;
+  kesatuan?: string;
 }
 
 interface RecentRunnersTableProps {
@@ -44,6 +46,8 @@ const RecentRunnersTable = ({ runners }: RecentRunnersTableProps) => {
             <tr>
               <th>Pangkat</th>
               <th>Nama</th>
+              <th>Kotama</th>
+              <th>Kesatuan</th>
               <th>Jarak (km)</th>
               <th>Target (km)</th>
               <th>Status</th>
@@ -55,6 +59,8 @@ const RecentRunnersTable = ({ runners }: RecentRunnersTableProps) => {
               <tr key={runner.id}>
                 <td className="font-medium text-sm">{runner.rank || '-'}</td>
                 <td className="font-medium">{runner.name}</td>
+                <td className="text-sm text-muted-foreground">{runner.kotama || '-'}</td>
+                <td className="text-sm text-muted-foreground">{runner.kesatuan || '-'}</td>
                 <td>{typeof runner.distanceKm === 'number' ? runner.distanceKm.toFixed(1) : runner.distance?.toFixed(2)} km</td>
                 <td>{runner.targetKm || 14.0} km</td>
                 <td>
