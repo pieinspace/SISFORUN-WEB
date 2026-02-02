@@ -16,6 +16,10 @@ type ApiRunner = {
   totalSessions?: number;
   total_distance?: number;
   total_sessions?: number;
+  pangkat_name?: string;
+  kesatuan_name?: string;
+  subdis_name?: string;
+  corps_name?: string;
 };
 
 type ApiTarget14 = {
@@ -25,6 +29,10 @@ type ApiTarget14 = {
   distance_km: number;
   achieved_date: string; // YYYY-MM-DD
   validation_status: "validated" | "pending";
+  pangkat_name?: string;
+  kesatuan_name?: string;
+  subdis_name?: string;
+  corps_name?: string;
 };
 
 const Dashboard = () => {

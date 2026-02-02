@@ -19,9 +19,20 @@ router.get("/14km", async (_req, res) => {
         rs.duration_sec,
         rs.date_created AS achieved_date,
         rs.validation_status,
-        u.kesatuan
+        u.kd_ktm,
+        u.kd_smkl,
+        u.kd_corps,
+        u.kd_pkt,
+        k.ur_ktm AS kesatuan_name,
+        s.ur_smkl AS subdis_name,
+        c.init_corps AS corps_name,
+        p.ur_pkt AS pangkat_name
       FROM run_sessions rs
       JOIN users u ON u.id = rs.user_id
+      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN corps c ON u.kd_corps = c.kd_corps
+      LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
       WHERE rs.distance_km >= 14
       ORDER BY rs.date_created DESC
     `);
@@ -47,7 +58,6 @@ router.get("/14km", async (_req, res) => {
         // Frontend expects these fields
         time_taken,
         pace,
-        subdis: null, // subdis not available in users table
       };
     });
 

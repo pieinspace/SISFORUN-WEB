@@ -9,49 +9,33 @@ export const getRunners = async (_req: Request, res: Response) => {
         u.name,
         u.pangkat AS rank,
         u.role,
-        u.kesatuan,
         u.created_at AS "createdAt",
+        u.kd_ktm,
+        u.kd_smkl,
+        u.kd_corps,
+        u.kd_pkt,
+        k.ur_ktm AS kesatuan_name,
+        s.ur_smkl AS subdis_name,
+        c.init_corps AS corps_name,
+        p.ur_pkt AS pangkat_name,
         COALESCE(SUM(rs.distance_km), 0) AS "totalDistance",
         COUNT(rs.id) AS "totalSessions"
       FROM users u
       LEFT JOIN run_sessions rs ON rs.user_id = u.id
+      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN corps c ON u.kd_corps = c.kd_corps
+      LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
       WHERE u.role != 'admin'
-      GROUP BY u.id, u.name, u.pangkat, u.role, u.kesatuan, u.created_at
+      GROUP BY 
+        u.id, u.name, u.pangkat, u.role, u.created_at, 
+        u.kd_ktm, u.kd_smkl, u.kd_corps, u.kd_pkt,
+        k.ur_ktm, s.ur_smkl, c.init_corps, p.ur_pkt
       ORDER BY 
-        CASE u.pangkat
-          -- Militer (dari tertinggi)
-          WHEN 'Jenderal' THEN 1
-          WHEN 'Letnan Jenderal' THEN 2
-          WHEN 'Mayor Jenderal' THEN 3
-          WHEN 'Brigadir Jenderal' THEN 4
-          WHEN 'Kolonel' THEN 5
-          WHEN 'Letnan Kolonel' THEN 6
-          WHEN 'Mayor' THEN 7
-          WHEN 'Kapten' THEN 8
-          WHEN 'Lettu' THEN 9
-          WHEN 'Letda' THEN 10
-          WHEN 'Serma' THEN 11
-          WHEN 'Serka' THEN 12
-          WHEN 'Sertu' THEN 13
-          WHEN 'Serda' THEN 14
-          WHEN 'Kopral' THEN 15
-          -- ASN (dari tertinggi)
-          WHEN 'PNS Gol IV/e' THEN 20
-          WHEN 'PNS Gol IV/d' THEN 21
-          WHEN 'PNS Gol IV/c' THEN 22
-          WHEN 'PNS Gol IV/b' THEN 23
-          WHEN 'PNS Gol IV/a' THEN 24
-          WHEN 'PNS Gol III/d' THEN 25
-          WHEN 'PNS Gol III/c' THEN 26
-          WHEN 'PNS Gol III/b' THEN 27
-          WHEN 'PNS Gol III/a' THEN 28
-          WHEN 'PNS Gol III' THEN 29
-          WHEN 'PNS Gol II/d' THEN 30
-          WHEN 'PNS Gol II/c' THEN 31
-          WHEN 'PNS Gol II/b' THEN 32
-          WHEN 'PNS Gol II/a' THEN 33
-          ELSE 100
-        END ASC,
+        CASE 
+          WHEN u.kd_pkt IS NOT NULL THEN CAST(u.kd_pkt AS INTEGER)
+          ELSE 0
+        END DESC,
         u.name ASC
     `);
 
@@ -72,16 +56,30 @@ export const getRunnerById = async (req: Request, res: Response) => {
         u.name,
         u.pangkat AS rank,
         u.role,
-        u.kesatuan,
         u.nrp,
         u.created_at AS "createdAt",
+        u.kd_ktm,
+        u.kd_smkl,
+        u.kd_corps,
+        u.kd_pkt,
+        k.ur_ktm AS kesatuan_name,
+        s.ur_smkl AS subdis_name,
+        c.init_corps AS corps_name,
+        p.ur_pkt AS pangkat_name,
         COALESCE(SUM(rs.distance_km), 0) AS "totalDistance",
         COALESCE(SUM(rs.duration_sec), 0) AS "totalDuration",
         COUNT(rs.id) AS "totalSessions"
       FROM users u
       LEFT JOIN run_sessions rs ON rs.user_id = u.id
+      LEFT JOIN kesatuan k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN subdis s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN corps c ON u.kd_corps = c.kd_corps
+      LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
       WHERE u.id = $1
-      GROUP BY u.id, u.name, u.pangkat, u.role, u.kesatuan, u.nrp, u.created_at
+      GROUP BY 
+        u.id, u.name, u.pangkat, u.role, u.nrp, u.created_at, 
+        u.kd_ktm, u.kd_smkl, u.kd_corps, u.kd_pkt,
+        k.ur_ktm, s.ur_smkl, c.init_corps, p.ur_pkt
     `, [id]);
 
     if (result.rows.length === 0) {
@@ -178,12 +176,12 @@ export const getRunnerSessions = async (req: Request, res: Response) => {
 
 export const updateRunner = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, rank } = req.body;
+  const { name, rank, kd_pkt, kd_ktm, kd_smkl, kd_corps } = req.body;
 
   try {
     const result = await pool.query(
-      "UPDATE users SET name = $1, pangkat = $2 WHERE id = $3 RETURNING *",
-      [name, rank, id]
+      "UPDATE users SET name = $1, pangkat = $2, kd_pkt = $3, kd_ktm = $4, kd_smkl = $5, kd_corps = $6 WHERE id = $7 RETURNING *",
+      [name, rank, kd_pkt, kd_ktm, kd_smkl, kd_corps, id]
     );
 
     if (result.rowCount === 0) {

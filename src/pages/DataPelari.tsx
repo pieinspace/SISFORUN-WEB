@@ -7,14 +7,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, ChevronDown, Clock, Eye, Loader2, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Clock, Eye, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -55,6 +48,14 @@ interface ApiRunner {
   total_sessions?: number;
   created_at?: string;
   createdAt?: string;
+  kd_ktm?: string;
+  kd_smkl?: string;
+  kd_corps?: string;
+  kd_pkt?: string;
+  pangkat_name?: string;
+  kesatuan_name?: string;
+  subdis_name?: string;
+  corps_name?: string;
 }
 
 interface ApiTarget14 {
@@ -68,12 +69,17 @@ interface Pelari {
   pangkat: string;
   nama: string;
   email: string;
-  kesatuan: string; // Not in API yet, use placeholder
-  subdis: string;   // Not in API yet, use placeholder
+  kesatuan: string;
+  subdis: string;
+  corps: string; // Add this
   totalSesi: number;
   totalJarak: number;
   statusTarget: string;
   bergabung: string;
+  kd_ktm?: string;
+  kd_smkl?: string;
+  kd_corps?: string;
+  kd_pkt?: string;
 }
 
 const formatDateID = (isoString: string) => {
@@ -111,6 +117,12 @@ const DataPelari = () => {
   const [loading, setLoading] = useState(true);
   const [pelariData, setPelariData] = useState<Pelari[]>([]);
 
+  // Master Data State
+  const [masterKesatuan, setMasterKesatuan] = useState<{ kd_ktm: string; ur_ktm: string }[]>([]);
+  const [masterSubdis, setMasterSubdis] = useState<{ kd_ktm: string; kd_smkl: string; ur_smkl: string }[]>([]);
+  const [masterCorps, setMasterCorps] = useState<{ kd_corps: string; init_corps: string; ur_corps: string }[]>([]);
+  const [masterPangkat, setMasterPangkat] = useState<{ kd_pkt: string; ur_pkt: string }[]>([]);
+
   const [searchNama, setSearchNama] = useState('');
   const [filterKesatuan, setFilterKesatuan] = useState('');
   const [filterSubdis, setFilterSubdis] = useState('');
@@ -122,22 +134,53 @@ const DataPelari = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Edit State
-  const [editingPelari, setEditingPelari] = useState<Pelari | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    nama: '',
-    pangkat: ''
-  });
+  // Fetch Master Data on Mount
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const [ktmRes, corpsRes, pktRes] = await Promise.all([
+          fetch(`${API_BASE}/api/master/kesatuan`),
+          fetch(`${API_BASE}/api/master/corps`),
+          fetch(`${API_BASE}/api/master/pangkat`)
+        ]);
 
-  // Dynamically generate kesatuan list from pelariData
-  const kesatuanList = useMemo(() => {
-    const uniqueKesatuan = [...new Set(pelariData.map(p => p.kesatuan).filter(k => k && k !== '-'))];
-    return uniqueKesatuan.sort();
-  }, [pelariData]);
+        const [ktmJson, corpsJson, pktJson] = await Promise.all([
+          ktmRes.json(),
+          corpsRes.json(),
+          pktRes.json()
+        ]);
 
-  const subdisList = ['Subdis 1', 'Subdis 2'];
+        if (ktmJson.success) setMasterKesatuan(ktmJson.data);
+        if (corpsJson.success) setMasterCorps(corpsJson.data);
+        if (pktJson.success) setMasterPangkat(pktJson.data);
+      } catch (error) {
+        console.error("Failed to fetch master data:", error);
+      }
+    };
+    fetchMasterData();
+  }, []);
+
+  // Fetch Subdis when filterKesatuan changes
+  useEffect(() => {
+    if (!filterKesatuan) {
+      setMasterSubdis([]);
+      setFilterSubdis("");
+      return;
+    }
+
+    const fetchSubdis = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`);
+        const data = await res.json();
+        if (data.success) {
+          setMasterSubdis(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch subdis:", error);
+      }
+    };
+    fetchSubdis();
+  }, [filterKesatuan]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -161,32 +204,40 @@ const DataPelari = () => {
           if (target) {
             if (target.distance_km >= 14 && target.validation_status === "validated") {
               statusTarget = "Tercapai";
-            } else if (target.distance_km >= 14 && target.validation_status === "pending") {
-              // Technically reached distance but waiting validation. 
-              // Could be "Dalam Proses" or separate status. treating as "Dalam Proses" / Pending
-              statusTarget = "Dalam Proses";
             } else {
               statusTarget = "Dalam Proses";
             }
           } else {
-            // Check if any distance
             const dist = Number(r.totalDistance ?? r.total_distance ?? 0);
             if (dist > 0) statusTarget = "Dalam Proses";
           }
 
-          const rank = r.rank || "-";
+          const rank = r.pangkat_name || r.rank || "-";
+          const kesatuanLabel = r.kesatuan_name || r.kesatuan || "-";
+
+          // Hide corps for ASN (21-45) and Generals (91-94)
+          const pk = parseInt(r.kd_pkt || "0");
+          const isAsnOrGeneral = (pk >= 21 && pk <= 45) || (pk >= 91 && pk <= 94);
+          const corpsLabel = isAsnOrGeneral ? "-" : (r.corps_name || "-");
+
+          const subdisLabel = r.subdis_name || "-";
 
           return {
             id: r.id,
             pangkat: rank,
             nama: r.name,
             email: makeEmail(r.name, rank),
-            kesatuan: r.kesatuan || "-", // Use data from API
-            subdis: "-",          // Placeholder
+            kesatuan: kesatuanLabel,
+            subdis: subdisLabel,
+            corps: corpsLabel,
             totalSesi: Number(r.totalSessions ?? r.total_sessions ?? 0),
             totalJarak: Number(r.totalDistance ?? r.total_distance ?? 0),
             statusTarget: statusTarget,
             bergabung: formatDateID(r.createdAt ?? r.created_at ?? ""),
+            kd_ktm: r.kd_ktm,
+            kd_smkl: r.kd_smkl,
+            kd_corps: r.kd_corps,
+            kd_pkt: r.kd_pkt,
           };
         });
 
@@ -200,58 +251,14 @@ const DataPelari = () => {
     };
 
     fetchData();
-  }, []);
-
-  const handleEditClick = (pelari: Pelari) => {
-    setEditingPelari(pelari);
-    setEditFormData({
-      nama: pelari.nama,
-      pangkat: pelari.pangkat
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleUpdate = async () => {
-    if (!editingPelari) return;
-    setIsUpdating(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/runners/${editingPelari.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: editFormData.nama,
-          rank: editFormData.pangkat
-        }),
-      });
-
-      if (!res.ok) throw new Error('Gagal memperbarui data');
-
-      toast.success('Data pelari berhasil diperbarui');
-      setEditDialogOpen(false);
-
-      // Update local state
-      setPelariData(prev => prev.map(p =>
-        p.id === editingPelari.id
-          ? { ...p, nama: editFormData.nama, pangkat: editFormData.pangkat, email: makeEmail(editFormData.nama, editFormData.pangkat) }
-          : p
-      ));
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memperbarui data pelari');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
+  }, [masterKesatuan, masterCorps, masterSubdis]); // Add master data as dependencies to re-run mapping if they load later
 
   // Filter data
   const filteredData = useMemo(() => {
     return pelariData.filter(pelari => {
       const matchNama = pelari.nama.toLowerCase().includes(searchNama.toLowerCase());
-      const matchKesatuan = !filterKesatuan || pelari.kesatuan === filterKesatuan;
-      const matchSubdis = !filterSubdis || pelari.subdis === filterSubdis;
+      const matchKesatuan = !filterKesatuan || pelari.kd_ktm === filterKesatuan;
+      const matchSubdis = !filterSubdis || pelari.kd_smkl === filterSubdis;
       const matchStatus = filterStatus === 'all' || !filterStatus || pelari.statusTarget === filterStatus;
       return matchNama && matchKesatuan && matchSubdis && matchStatus;
     });
@@ -321,7 +328,7 @@ const DataPelari = () => {
                   aria-expanded={openKesatuan}
                   className="w-full justify-between font-normal"
                 >
-                  {filterKesatuan || "Semua Kesatuan"}
+                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kesatuan"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -340,16 +347,16 @@ const DataPelari = () => {
                       >
                         Semua Kesatuan
                       </CommandItem>
-                      {kesatuanList.map((kesatuan) => (
+                      {masterKesatuan.map((k) => (
                         <CommandItem
-                          key={kesatuan}
-                          value={kesatuan}
-                          onSelect={(currentValue) => {
-                            setFilterKesatuan(currentValue === filterKesatuan ? "" : currentValue);
+                          key={k.kd_ktm}
+                          value={k.ur_ktm}
+                          onSelect={() => {
+                            setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
                             setOpenKesatuan(false);
                           }}
                         >
-                          {kesatuan}
+                          {k.ur_ktm}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -370,7 +377,7 @@ const DataPelari = () => {
                   aria-expanded={openSubdis}
                   className="w-full justify-between font-normal"
                 >
-                  {filterSubdis || "Semua Subdis"}
+                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Subdis"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -389,16 +396,16 @@ const DataPelari = () => {
                       >
                         Semua Subdis
                       </CommandItem>
-                      {subdisList.map((subdis) => (
+                      {masterSubdis.map((s) => (
                         <CommandItem
-                          key={subdis}
-                          value={subdis}
-                          onSelect={(currentValue) => {
-                            setFilterSubdis(currentValue === filterSubdis ? "" : currentValue);
+                          key={s.kd_smkl}
+                          value={s.ur_smkl}
+                          onSelect={() => {
+                            setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
                             setOpenSubdis(false);
                           }}
                         >
-                          {subdis}
+                          {s.ur_smkl}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -437,6 +444,8 @@ const DataPelari = () => {
                 <th>Pangkat</th>
                 <th>Nama</th>
                 <th>Corps</th>
+                <th>Kesatuan</th>
+                <th>Subdis</th>
                 <th>Total Sesi</th>
                 <th>Total Jarak</th>
                 <th>Status Target</th>
@@ -447,7 +456,7 @@ const DataPelari = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={10} className="text-center py-8 text-muted-foreground">
                     Memuat data...
                   </td>
                 </tr>
@@ -456,8 +465,10 @@ const DataPelari = () => {
                   <tr key={pelari.id}>
                     <td className="font-medium text-sm text-foreground">{pelari.pangkat}</td>
                     <td className="font-medium text-foreground">{pelari.nama}</td>
-                    <td className="text-muted-foreground">{pelari.kesatuan}</td>
-                    <td className="text-foreground">{pelari.totalSesi}</td>
+                    <td className="text-muted-foreground">{pelari.corps || "-"}</td>
+                    <td className="text-muted-foreground">{pelari.kesatuan || "-"}</td>
+                    <td className="text-muted-foreground">{pelari.subdis || "-"}</td>
+                    <td className="text-foreground">{pelari.totalSesi} sesi</td>
                     <td className="font-semibold text-primary">{(pelari.totalJarak || 0).toFixed(2)} km</td>
                     <td>
                       {pelari.statusTarget === 'Tercapai' ? (
@@ -492,7 +503,7 @@ const DataPelari = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={10} className="text-center py-8 text-muted-foreground">
                     Tidak ada data pelari yang ditemukan.
                   </td>
                 </tr>
@@ -542,50 +553,6 @@ const DataPelari = () => {
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Data Pelari</DialogTitle>
-            <DialogDescription>
-              Perbarui informasi nama dan pangkat pelari di sini.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-pangkat" className="text-right">
-                Pangkat
-              </Label>
-              <Input
-                id="edit-pangkat"
-                value={editFormData.pangkat}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, pangkat: e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-nama" className="text-right">
-                Nama
-              </Label>
-              <Input
-                id="edit-nama"
-                value={editFormData.nama}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, nama: e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isUpdating}>
-              Batal
-            </Button>
-            <Button onClick={handleUpdate} disabled={isUpdating}>
-              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Simpan Perubahan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

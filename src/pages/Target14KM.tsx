@@ -52,6 +52,10 @@ interface TargetRunner {
   validationStatus: "validated" | "pending";
   kesatuan: string;
   subdis: string;
+  kd_ktm?: string;
+  kd_smkl?: string;
+  kd_corps?: string;
+  corps?: string;
 }
 
 type ApiTargetRow = {
@@ -66,19 +70,21 @@ type ApiTargetRow = {
   validation_status: "validated" | "pending";
   kesatuan?: string;
   subdis?: string;
+  kd_ktm?: string;
+  kd_smkl?: string;
+  kd_corps?: string;
+  kd_pkt?: string;
+  pangkat_name?: string;
+  kesatuan_name?: string;
+  subdis_name?: string;
+  corps_name?: string;
 };
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
   "http://localhost:4001";
 
-const subdisList = [
-  "Subdis 1",
-  "Subdis 2",
-  "Subdis 3",
-  "Subdis 4",
-  "Subdis 5",
-];
+
 
 const formatDateID = (yyyyMmDd: string) => {
   // input: "2026-01-09"
@@ -131,6 +137,52 @@ const Target14KM = () => {
   const [targetRunners, setTargetRunners] = useState<TargetRunner[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Master Data State
+  const [masterKesatuan, setMasterKesatuan] = useState<{ kd_ktm: string; ur_ktm: string }[]>([]);
+  const [masterSubdis, setMasterSubdis] = useState<{ kd_ktm: string; kd_smkl: string; ur_smkl: string }[]>([]);
+  const [masterCorps, setMasterCorps] = useState<{ kd_corps: string; init_corps: string }[]>([]);
+
+  // Fetch Master Data on Mount
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const [ktmRes, corpsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/master/kesatuan`),
+          fetch(`${API_BASE}/api/master/corps`)
+        ]);
+        const ktmJson = await ktmRes.json();
+        const corpsJson = await corpsRes.json();
+        if (ktmJson.success) setMasterKesatuan(ktmJson.data);
+        if (corpsJson.success) setMasterCorps(corpsJson.data);
+      } catch (error) {
+        console.error("Failed to fetch master data:", error);
+      }
+    };
+    fetchMasterData();
+  }, []);
+
+  // Fetch Subdis when filterKesatuan changes
+  useEffect(() => {
+    if (!filterKesatuan) {
+      setMasterSubdis([]);
+      setFilterSubdis("");
+      return;
+    }
+
+    const fetchSubdis = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`);
+        const data = await res.json();
+        if (data.success) {
+          setMasterSubdis(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch subdis:", error);
+      }
+    };
+    fetchSubdis();
+  }, [filterKesatuan]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -145,15 +197,23 @@ const Target14KM = () => {
           id: r.id,
           sessionId: r.session_id,
           name: r.name,
-          rank: r.rank,
+          rank: r.pangkat_name || r.rank || "-",
           distance: Number(r.distance_km ?? 0),
           time: r.time_taken ?? "0:00:00",
           pace: r.pace ?? "0:00/km",
           achievedDate: formatDateID(r.achieved_date),
           achievedDateRaw: r.achieved_date,
           validationStatus: r.validation_status || "pending",
-          kesatuan: r.kesatuan ?? "-",
-          subdis: r.subdis ?? "-",
+          kesatuan: r.kesatuan_name || r.kesatuan || "-",
+          subdis: r.subdis_name || r.subdis || "-",
+          kd_ktm: r.kd_ktm,
+          kd_smkl: r.kd_smkl,
+          kd_corps: r.kd_corps,
+          corps: (() => {
+            const pk = parseInt(r.kd_pkt || "0");
+            const isAsnOrGeneral = (pk >= 21 && pk <= 45) || (pk >= 91 && pk <= 94);
+            return isAsnOrGeneral ? "-" : (r.corps_name || "-");
+          })(),
         }));
 
         if (!cancelled) setTargetRunners(mapped);
@@ -168,7 +228,7 @@ const Target14KM = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [masterKesatuan, masterCorps]);
 
   const handleValidate = async (sessionId: string, odebugId: string) => {
     try {
@@ -200,8 +260,8 @@ const Target14KM = () => {
 
       const matchesDate = isInPeriod(runner.achievedDateRaw, dateFilter);
 
-      const matchesKesatuan = !filterKesatuan || runner.kesatuan === filterKesatuan;
-      const matchesSubdis = !filterSubdis || runner.subdis === filterSubdis;
+      const matchesKesatuan = !filterKesatuan || runner.kd_ktm === filterKesatuan;
+      const matchesSubdis = !filterSubdis || runner.kd_smkl === filterSubdis;
 
       return matchesSearch && matchesStatus && matchesDate && matchesKesatuan && matchesSubdis;
     });
@@ -216,11 +276,7 @@ const Target14KM = () => {
     [targetRunners]
   );
 
-  // Dynamically generate kesatuan list from targetRunners
-  const kesatuanList = useMemo(() => {
-    const uniqueKesatuan = [...new Set(targetRunners.map(r => r.kesatuan).filter(k => k && k !== '-'))];
-    return uniqueKesatuan.sort();
-  }, [targetRunners]);
+
 
   return (
     <div className="space-y-6">
@@ -295,7 +351,7 @@ const Target14KM = () => {
                   aria-expanded={openKesatuan}
                   className="w-full justify-between"
                 >
-                  {filterKesatuan || "Semua Kesatuan"}
+                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kesatuan"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -314,16 +370,16 @@ const Target14KM = () => {
                       >
                         Semua Kesatuan
                       </CommandItem>
-                      {kesatuanList.map((kesatuan) => (
+                      {masterKesatuan.map((k) => (
                         <CommandItem
-                          key={kesatuan}
-                          value={kesatuan}
-                          onSelect={(currentValue) => {
-                            setFilterKesatuan(currentValue === filterKesatuan ? "" : currentValue);
+                          key={k.kd_ktm}
+                          value={k.ur_ktm}
+                          onSelect={() => {
+                            setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
                             setOpenKesatuan(false);
                           }}
                         >
-                          {kesatuan}
+                          {k.ur_ktm}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -346,7 +402,7 @@ const Target14KM = () => {
                   aria-expanded={openSubdis}
                   className="w-full justify-between"
                 >
-                  {filterSubdis || "Semua Subdis"}
+                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Subdis"}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -365,16 +421,16 @@ const Target14KM = () => {
                       >
                         Semua Subdis
                       </CommandItem>
-                      {subdisList.map((subdis) => (
+                      {masterSubdis.map((s) => (
                         <CommandItem
-                          key={subdis}
-                          value={subdis}
-                          onSelect={(currentValue) => {
-                            setFilterSubdis(currentValue === filterSubdis ? "" : currentValue);
+                          key={s.kd_smkl}
+                          value={s.ur_smkl}
+                          onSelect={() => {
+                            setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
                             setOpenSubdis(false);
                           }}
                         >
-                          {subdis}
+                          {s.ur_smkl}
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -431,11 +487,13 @@ const Target14KM = () => {
               <tr>
                 <th>Pangkat</th>
                 <th>Nama Pelari</th>
+                <th>Corps</th>
+                <th>Kesatuan</th>
                 <th>Jarak Tempuh</th>
                 <th>Waktu Tempuh</th>
-                <th>Pace Rata-rata</th>
-                <th>Tanggal Pencapaian</th>
-                <th>Status Validasi</th>
+                <th>Pace</th>
+                <th>Tanggal</th>
+                <th>Status</th>
                 <th className="text-right">Aksi</th>
               </tr>
             </thead>
@@ -464,6 +522,8 @@ const Target14KM = () => {
                   <tr key={`${runner.id}-${runner.achievedDateRaw}`}>
                     <td className="font-medium text-sm">{runner.rank}</td>
                     <td className="font-medium">{runner.name}</td>
+                    <td className="text-muted-foreground">{runner.corps || "-"}</td>
+                    <td className="text-muted-foreground">{runner.kesatuan || "-"}</td>
                     <td className="font-semibold text-primary">
                       {runner.distance.toFixed(2)} km
                     </td>
