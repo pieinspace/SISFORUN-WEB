@@ -69,7 +69,7 @@ const Dashboard = () => {
     return latest.map((t) => ({
       id: t.id,
       name: t.name,
-      rank: t.rank,
+      rank: t.pangkat_name || t.rank,
       distanceKm: Number(t.distance_km),
       targetKm: 14,
       status: t.validation_status, // RecentRunnersTable sudah handle pending/validated

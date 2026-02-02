@@ -5,31 +5,59 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Camera, Mail, MapPin, Phone, Save, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() || "http://localhost:4001";
 
 const Profil = () => {
-  const [isEditing, setIsEditing] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [stats, setStats] = useState({
+    totalRunners: 0,
+    totalReports: 0,
+    dataCompleteness: 0
+  });
+
   const [profile, setProfile] = useState({
     name: "Admin FORZA",
-    email: "admin@forza.id",
     phone: "+62 812-3456-7890",
     location: "Jakarta, Indonesia",
-    bio: "Administrator sistem tracking lari FORZA. Bertanggung jawab mengelola data pelari dan memantau progress latihan.",
     joinDate: "Januari 2024",
     avatar: ""
   });
 
-  const handleSave = () => {
-    // Simpan perubahan profil
-    setIsEditing(false);
-  };
+  useEffect(() => {
+    const userStr = localStorage.getItem("admin_user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        setProfile(prev => ({
+          ...prev,
+          name: user.name || prev.name,
+        }));
+      } catch (e) {
+        console.error("Failed to parse admin_user", e);
+      }
+    }
+  }, []);
 
-  const handleInputChange = (field: string, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("admin_token");
+        const res = await fetch(`${API_BASE}/api/stats/summary`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json.success) {
+          setStats(json.data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch statistics", e);
+      }
+    };
+    fetchStats();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -37,166 +65,108 @@ const Profil = () => {
       <div className="page-header">
         <h1 className="page-title">Profil Admin</h1>
         <p className="page-description">
-          Kelola informasi profil dan pengaturan akun Anda
+          Informasi profil dan cakupan manajemen Anda
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Card */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 border-none shadow-md bg-white">
           <CardHeader className="text-center">
             <div className="relative mx-auto mb-4">
-              <Avatar className="h-24 w-24 mx-auto">
+              <Avatar className="h-24 w-24 mx-auto border-4 border-primary/10">
                 <AvatarImage src={profile.avatar} alt={profile.name} />
-                <AvatarFallback className="text-2xl">
+                <AvatarFallback className="text-2xl bg-primary/5 text-primary">
                   {profile.name.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              {isEditing && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-              )}
             </div>
-            <CardTitle className="text-xl">{profile.name}</CardTitle>
-            <p className="text-sm text-muted-foreground">Super Administrator</p>
+            <CardTitle className="text-xl font-bold">{profile.name}</CardTitle>
+            <p className="text-xs font-semibold py-1 px-3 bg-primary/10 text-primary rounded-full inline-block mt-2 uppercase tracking-wide">
+              {currentUser?.role?.replace('_', ' ') || "Administrator"}
+            </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardContent className="space-y-4 pt-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                <Calendar className="h-4 w-4" />
+              </div>
               <span>Bergabung sejak {profile.joinDate}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span>{profile.email}</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Phone className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                <Phone className="h-4 w-4" />
+              </div>
               <span>{profile.phone}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                <MapPin className="h-4 w-4" />
+              </div>
               <span>{profile.location}</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Profile Form */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border-none shadow-md bg-white">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Informasi Profil</CardTitle>
-              <Button
-                variant={isEditing ? "default" : "outline"}
-                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-              >
-                {isEditing ? (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Simpan
-                  </>
-                ) : (
-                  <>
-                    <User className="mr-2 h-4 w-4" />
-                    Edit Profil
-                  </>
-                )}
-              </Button>
+              <CardTitle className="text-lg font-bold">Informasi Profil</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+          <CardContent className="space-y-6 pt-2">
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Nama Lengkap</Label>
+                <Label htmlFor="name" className="text-xs font-bold text-muted-foreground uppercase">Nama Lengkap</Label>
                 <Input
                   id="name"
                   value={profile.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  disabled={!isEditing}
+                  disabled
+                  className="bg-muted/30 focus-visible:ring-primary h-10"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Nomor Telepon</Label>
+                <Label htmlFor="phone" className="text-xs font-bold text-muted-foreground uppercase">Nomor Telepon</Label>
                 <Input
                   id="phone"
                   value={profile.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  disabled={!isEditing}
+                  disabled
+                  className="bg-muted/30 focus-visible:ring-primary h-10"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location">Lokasi</Label>
+                <Label htmlFor="location" className="text-xs font-bold text-muted-foreground uppercase">Lokasi</Label>
                 <Input
                   id="location"
                   value={profile.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  disabled={!isEditing}
+                  disabled
+                  className="bg-muted/30 focus-visible:ring-primary h-10"
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
-                placeholder="Ceritakan sedikit tentang diri Anda..."
-                value={profile.bio}
-                onChange={(e) => handleInputChange('bio', e.target.value)}
-                disabled={!isEditing}
-                rows={4}
-              />
-            </div>
-
-            {isEditing && (
-              <div className="flex gap-3 pt-4">
-                <Button onClick={handleSave}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Simpan Perubahan
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Batal
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Activity Summary */}
-      <Card>
+      <Card className="border-none shadow-md bg-white">
         <CardHeader>
-          <CardTitle>Ringkasan Aktivitas</CardTitle>
+          <CardTitle className="text-lg font-bold">Ringkasan Aktivitas</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <div className="text-2xl font-bold text-primary">156</div>
-              <p className="text-sm text-muted-foreground">Total Pelari Dikelola</p>
+        <CardContent className="pt-2 pb-8">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="text-center p-6 rounded-2xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/[0.05] transition-all group">
+              <div className="text-3xl font-black text-primary mb-1 group-hover:scale-110 transition-transform">{stats.totalRunners}</div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Pelari Dikelola</p>
             </div>
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <div className="text-2xl font-bold text-primary">24</div>
-              <p className="text-sm text-muted-foreground">Laporan Dibuat</p>
+            <div className="text-center p-6 rounded-2xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/[0.05] transition-all group">
+              <div className="text-3xl font-black text-primary mb-1 group-hover:scale-110 transition-transform">{stats.totalReports}</div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Laporan Dibuat</p>
             </div>
-            <div className="text-center p-4 rounded-lg bg-muted/50">
-              <div className="text-2xl font-bold text-primary">98%</div>
-              <p className="text-sm text-muted-foreground">Tingkat Kelengkapan Data</p>
+            <div className="text-center p-6 rounded-2xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/[0.05] transition-all group">
+              <div className="text-3xl font-black text-primary mb-1 group-hover:scale-110 transition-transform">{stats.dataCompleteness}%</div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tingkat Kelengkapan Data</p>
             </div>
           </div>
         </CardContent>

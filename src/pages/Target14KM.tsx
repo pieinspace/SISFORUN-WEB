@@ -39,7 +39,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatWIB } from "@/lib/utils";
 
 interface TargetRunner {
   id: string;
@@ -88,16 +88,6 @@ const API_BASE =
 
 
 
-const formatDateID = (yyyyMmDd: string) => {
-  // input: "2026-01-09"
-  const d = new Date(`${yyyyMmDd}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return yyyyMmDd;
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(d);
-};
 
 const isInPeriod = (yyyyMmDd: string, period: string) => {
   if (period === "all") return true;
@@ -135,6 +125,31 @@ const Target14KM = () => {
   const [filterSubdis, setFilterSubdis] = useState("");
   const [openKesatuan, setOpenKesatuan] = useState(false);
   const [openSubdis, setOpenSubdis] = useState(false);
+
+  // User Role & Scope
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    const userStr = localStorage.getItem("admin_user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        // Pre-fill filters based on scope
+        if (user.role === 'admin_kotama' && user.kd_ktm) {
+          setFilterKesatuan(user.kd_ktm);
+        } else if (user.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+          setFilterKesatuan(user.kd_ktm);
+          setFilterSubdis(user.kd_smkl);
+        }
+      } catch (e) {
+        console.error("Failed to parse admin_user", e);
+      }
+    }
+  }, []);
+
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isAdminKotama = currentUser?.role === 'admin_kotama';
+  const isAdminSatuan = currentUser?.role === 'admin_satuan';
 
   const [targetRunners, setTargetRunners] = useState<TargetRunner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +223,7 @@ const Target14KM = () => {
           distance: Number(r.distance_km ?? 0),
           time: r.time_taken ?? "0:00:00",
           pace: r.pace ?? "0:00/km",
-          achievedDate: formatDateID(r.achieved_date),
+          achievedDate: formatWIB(r.achieved_date),
           achievedDateRaw: r.achieved_date,
           validationStatus: r.validation_status || "pending",
           kesatuan: r.kesatuan_name || r.kesatuan || "-",
@@ -345,132 +360,136 @@ const Target14KM = () => {
             </div>
           </div>
 
-          {/* Filter Kesatuan - Searchable Dropdown */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Kotama
-            </Label>
-            <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openKesatuan}
-                  className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
-                >
-                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[250px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Cari kotama..." />
-                  <CommandList>
-                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value=""
-                        onSelect={() => {
-                          setFilterKesatuan("");
-                          setOpenKesatuan(false);
-                        }}
-                      >
-                        <CheckCircle2
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            filterKesatuan === "" ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        Semua Kotama
-                      </CommandItem>
-                      {masterKesatuan.map((k) => (
+          {/* Filter Kotama */}
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kotama
+              </Label>
+              <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openKesatuan}
+                    className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
+                  >
+                    {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[250px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari kotama..." />
+                    <CommandList>
+                      <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={k.kd_ktm}
-                          value={k.ur_ktm}
+                          value=""
                           onSelect={() => {
-                            setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
+                            setFilterKesatuan("");
                             setOpenKesatuan(false);
                           }}
                         >
                           <CheckCircle2
                             className={cn(
                               "mr-2 h-4 w-4",
-                              filterKesatuan === k.kd_ktm ? "opacity-100" : "opacity-0"
+                              filterKesatuan === "" ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {k.ur_ktm}
+                          Semua Kotama
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                        {masterKesatuan.map((k) => (
+                          <CommandItem
+                            key={k.kd_ktm}
+                            value={k.ur_ktm}
+                            onSelect={() => {
+                              setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
+                              setOpenKesatuan(false);
+                            }}
+                          >
+                            <CheckCircle2
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                filterKesatuan === k.kd_ktm ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {k.ur_ktm}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Filter Kesatuan - Searchable Dropdown */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Kesatuan
-            </Label>
-            <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openSubdis}
-                  className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
-                  disabled={!filterKesatuan}
-                >
-                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[250px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
-                  <CommandList>
-                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value=""
-                        onSelect={() => {
-                          setFilterSubdis("");
-                          setOpenSubdis(false);
-                        }}
-                      >
-                        <CheckCircle2
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            filterSubdis === "" ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        Semua Kesatuan
-                      </CommandItem>
-                      {masterSubdis.map((s) => (
+          {(isSuperAdmin || isAdminKotama) && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kesatuan
+              </Label>
+              <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openSubdis}
+                    className="w-full justify-between bg-background/50 border-muted-foreground/20 hover:border-primary/50 transition-colors"
+                    disabled={!filterKesatuan}
+                  >
+                    {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[250px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari kesatuan..." />
+                    <CommandList>
+                      <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={s.kd_smkl}
-                          value={s.ur_smkl}
+                          value=""
                           onSelect={() => {
-                            setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                            setFilterSubdis("");
                             setOpenSubdis(false);
                           }}
                         >
                           <CheckCircle2
                             className={cn(
                               "mr-2 h-4 w-4",
-                              filterSubdis === s.kd_smkl ? "opacity-100" : "opacity-0"
+                              filterSubdis === "" ? "opacity-100" : "opacity-0"
                             )}
                           />
-                          {s.ur_smkl}
+                          Semua Kesatuan
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                        {masterSubdis.map((s) => (
+                          <CommandItem
+                            key={s.kd_smkl}
+                            value={s.ur_smkl}
+                            onSelect={() => {
+                              setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                              setOpenSubdis(false);
+                            }}
+                          >
+                            <CheckCircle2
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                filterSubdis === s.kd_smkl ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {s.ur_smkl}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Filter Status Validasi */}
           <div className="space-y-2">
@@ -557,12 +576,13 @@ const Target14KM = () => {
                     <td className="font-medium">{runner.name}</td>
                     <td className="text-muted-foreground">{runner.corps || "-"}</td>
                     <td className="text-muted-foreground">{runner.kesatuan || "-"}</td>
+                    <td className="text-muted-foreground">{runner.subdis || "-"}</td>
                     <td className="font-semibold text-primary">
                       {runner.distance.toFixed(2)} km
                     </td>
                     <td>{runner.time}</td>
                     <td>{runner.pace}</td>
-                    <td className="text-muted-foreground">{runner.achievedDate}</td>
+                    <td className="text-muted-foreground whitespace-nowrap tabular-nums">{runner.achievedDate}</td>
                     <td>
                       {runner.validationStatus === "validated" ? (
                         <span className="badge-success">

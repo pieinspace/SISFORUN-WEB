@@ -3,6 +3,7 @@ import { Router } from "express";
 import { pool } from "../db";
 
 import jwt from "jsonwebtoken";
+import { authenticateToken } from "../middleware/authMiddleware";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-ganti-di-env";
@@ -104,8 +105,11 @@ router.get("/admins", async (_req, res) => {
 });
 
 // POST /api/auth/admins - Create new admin
-router.post("/admins", async (req, res) => {
+router.post("/admins", authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role !== 'superadmin') {
+            return res.status(403).json({ success: false, message: "Hanya superadmin yang dapat menambah admin" });
+        }
         const { username, password, role, name, kd_ktm, kd_smkl } = req.body;
 
         if (!username || !password) {
@@ -134,8 +138,11 @@ router.post("/admins", async (req, res) => {
 });
 
 // DELETE /api/auth/admins/:id - Delete admin
-router.delete("/admins/:id", async (req, res) => {
+router.delete("/admins/:id", authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role !== 'superadmin') {
+            return res.status(403).json({ success: false, message: "Hanya superadmin yang dapat menghapus admin" });
+        }
         const { id } = req.params;
 
         // Prevent deleting original admin (optional but safer)
@@ -149,6 +156,43 @@ router.delete("/admins/:id", async (req, res) => {
     } catch (err) {
         console.error("Delete admin error:", err);
         res.status(500).json({ success: false, message: "Gagal menghapus admin" });
+    }
+});
+
+// POST /api/auth/change-password - Change admin password
+router.post("/change-password", authenticateToken, async (req: any, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const userId = req.user.id;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Password saat ini dan password baru wajib diisi" });
+        }
+
+        // Get user from DB
+        const result = await pool.query("SELECT password_hash FROM login_web WHERE id = $1", [userId]);
+        const user = result.rows[0];
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User tidak ditemukan" });
+        }
+
+        // Verify current password
+        const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isValid) {
+            return res.status(400).json({ success: false, message: "Password saat ini salah" });
+        }
+
+        // Hash new password
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+        // Update DB
+        await pool.query("UPDATE login_web SET password_hash = $1 WHERE id = $2", [newPasswordHash, userId]);
+
+        res.json({ success: true, message: "Password berhasil diperbarui" });
+    } catch (err) {
+        console.error("Change password error:", err);
+        res.status(500).json({ success: false, message: "Gagal memperbarui password" });
     }
 });
 

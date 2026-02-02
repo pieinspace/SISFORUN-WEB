@@ -130,6 +130,31 @@ const DataPelari = () => {
   const [openKesatuan, setOpenKesatuan] = useState(false);
   const [openSubdis, setOpenSubdis] = useState(false);
 
+  // User Role & Scope
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(() => {
+    const userStr = localStorage.getItem("admin_user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        // Pre-fill filters based on scope
+        if (user.role === 'admin_kotama' && user.kd_ktm) {
+          setFilterKesatuan(user.kd_ktm);
+        } else if (user.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+          setFilterKesatuan(user.kd_ktm);
+          setFilterSubdis(user.kd_smkl);
+        }
+      } catch (e) {
+        console.error("Failed to parse admin_user", e);
+      }
+    }
+  }, []);
+
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isAdminKotama = currentUser?.role === 'admin_kotama';
+  const isAdminSatuan = currentUser?.role === 'admin_satuan';
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -323,103 +348,107 @@ const DataPelari = () => {
           </div>
 
           {/* Filter Kotama */}
-          <div className="space-y-2">
-            <Label>Kotama</Label>
-            <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openKesatuan}
-                  className="w-full justify-between font-normal"
-                >
-                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Cari kotama..." />
-                  <CommandList>
-                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value=""
-                        onSelect={() => {
-                          setFilterKesatuan("");
-                          setOpenKesatuan(false);
-                        }}
-                      >
-                        Semua Kotama
-                      </CommandItem>
-                      {masterKesatuan.map((k) => (
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <Label>Kotama</Label>
+              <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openKesatuan}
+                    className="w-full justify-between font-normal"
+                  >
+                    {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari kotama..." />
+                    <CommandList>
+                      <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={k.kd_ktm}
-                          value={k.ur_ktm}
+                          value=""
                           onSelect={() => {
-                            setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
+                            setFilterKesatuan("");
                             setOpenKesatuan(false);
                           }}
                         >
-                          {k.ur_ktm}
+                          Semua Kotama
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                        {masterKesatuan.map((k) => (
+                          <CommandItem
+                            key={k.kd_ktm}
+                            value={k.ur_ktm}
+                            onSelect={() => {
+                              setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
+                              setOpenKesatuan(false);
+                            }}
+                          >
+                            {k.ur_ktm}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Filter Kesatuan */}
-          <div className="space-y-2">
-            <Label>Kesatuan</Label>
-            <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openSubdis}
-                  className="w-full justify-between font-normal"
-                  disabled={!filterKesatuan}
-                >
-                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
-                  <CommandList>
-                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem
-                        value=""
-                        onSelect={() => {
-                          setFilterSubdis("");
-                          setOpenSubdis(false);
-                        }}
-                      >
-                        Semua Kesatuan
-                      </CommandItem>
-                      {masterSubdis.map((s) => (
+          {(isSuperAdmin || isAdminKotama) && (
+            <div className="space-y-2">
+              <Label>Kesatuan</Label>
+              <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openSubdis}
+                    className="w-full justify-between font-normal"
+                    disabled={!filterKesatuan}
+                  >
+                    {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari kesatuan..." />
+                    <CommandList>
+                      <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
                         <CommandItem
-                          key={s.kd_smkl}
-                          value={s.ur_smkl}
+                          value=""
                           onSelect={() => {
-                            setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                            setFilterSubdis("");
                             setOpenSubdis(false);
                           }}
                         >
-                          {s.ur_smkl}
+                          Semua Kesatuan
                         </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+                        {masterSubdis.map((s) => (
+                          <CommandItem
+                            key={s.kd_smkl}
+                            value={s.ur_smkl}
+                            onSelect={() => {
+                              setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                              setOpenSubdis(false);
+                            }}
+                          >
+                            {s.ur_smkl}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Filter Status */}
           <div className="space-y-2">

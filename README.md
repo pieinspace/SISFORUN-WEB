@@ -104,3 +104,47 @@ No	Nama	NRP	Password	Kesatuan	Pangkat
 8	Sinta Maharani	400108	password123	Puskes TNI	PNS Gol II/c
 9	Tika Permata	400109	password123	Rohmin TNI	PNS Gol II/b
 10	Umi Kalsum	400110	password123	Pusinfolahta	PNS Gol II/a
+
+## Admin Account Credentials (Web Panel)
+Default Password: `admin123`
+
+### Kotama Admins
+| No | Kotama Name | Username | Role |
+|---|---|---|---|
+| 1 | KODAM I / BUKIT BARISAN | admin_ktm01 | Admin Kotama |
+| 2 | KODAM II / SRIWIJAYA | admin_ktm02 | Admin Kotama |
+| 3 | KODAM III / SILIWANGI | admin_ktm03 | Admin Kotama |
+| 4 | KODAM IV / DIPONEGORO | admin_ktm04 | Admin Kotama |
+| 5 | KODAM V / BRAWIJAYA | admin_ktm05 | Admin Kotama |
+| 6 | KODAM VI / MULAWARMAN | admin_ktm06 | Admin Kotama |
+| 7 | KODAM IX / UDAYANA | admin_ktm09 | Admin Kotama |
+| 8 | KODAM JAYA / JAYAKARTA | admin_ktm13 | Admin Kotama |
+| 9 | DISINFOLAHTAD | admin_ktm99 | Admin Kotama |
+
+### Kesatuan Admins
+| No | Kesatuan Name | Username | Role |
+|---|---|---|---|
+| 1 | KOREM 044/GAPO | admin_sat2A01 | Admin Satuan |
+| 2 | YON KAV 5/DPC | admin_sat2B01 | Admin Satuan |
+| 3 | KOREM 064/MY | admin_sat3A01 | Admin Satuan |
+| 4 | YONIF 310/KK | admin_sat3B01 | Admin Satuan |
+| 5 | KOREM 072/PMK | admin_sat4A01 | Admin Satuan |
+| 6 | YONIF 400/BR | admin_sat4B01 | Admin Satuan |
+| 7 | KOREM 084/BJ | admin_sat5A01 | Admin Satuan |
+| 8 | YON KAV 3/AC | admin_sat5B01 | Admin Satuan |
+| 9 | KOREM 091/ASN | admin_sat6A01 | Admin Satuan |
+| 10 | YONIF 600/R | admin_sat6B01 | Admin Satuan |
+| 11 | KOREM 161/WS | admin_sat9A01 | Admin Satuan |
+| 12 | YONIF 742/SWY | admin_sat9B01 | Admin Satuan |
+| 13 | KOREM 051/WKT | admin_sat13A1 | Admin Satuan |
+| 14 | YON KAV 7/PS | admin_sat13B1 | Admin Satuan |
+| 15 | YONIF 100 /PRAJURIT SETIA | admin_sat1A0B | Admin Satuan |
+| 16 | BRIGIF 7 /RIMBA RAYA | admin_sat1A1A | Admin Satuan |
+| 17 | YONIF 122 /TOMBAK SAKTI | admin_sat1A1B | Admin Satuan |
+| 18 | YONIF 125 /SIMBISA | admin_sat1A1C | Admin Satuan |
+| 19 | YONIF 126 /KALA SAKTI | admin_sat1A1D | Admin Satuan |
+| 20 | KODIM 0201 /MEDAN | admin_sat2Z0B | Admin Satuan |
+| 21 | KOREM 022 /PANTAI TIMUR | admin_sat2Z3A | Admin Satuan |
+| 22 | KODIM 0207 /SIMALUNGUN REM 022 | admin_sat2Z3B | Admin Satuan |
+| 23 | KODIM 0208 /ASAHAN REM 022 | admin_sat2Z3C | Admin Satuan |
+| 24 | DISINFOLAHTAD | admin_sat9901 | Admin Satuan |

@@ -2,27 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   ArrowLeft,
-  Mail,
   Calendar,
   Target,
   Clock,
   TrendingUp,
   Activity,
-  Pencil,
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { cn, formatWIB, formatDateWIB } from "@/lib/utils";
 import {
   LineChart,
   Line,
@@ -48,6 +39,7 @@ type ApiRunner = {
   totalSessions?: number;
   created_at?: string;
   createdAt?: string;
+  pangkat_name?: string;
 };
 
 type ApiTarget14 = {
@@ -61,15 +53,6 @@ type ApiTarget14 = {
   validation_status: "validated" | "pending";
 };
 
-const formatDateID = (yyyyMmDd: string) => {
-  const d = new Date(`${yyyyMmDd}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return yyyyMmDd;
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(d);
-};
 
 const makeEmail = (name: string, rank: string) => {
   const rankLower = (rank || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -118,13 +101,6 @@ const DetailPelari = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Edit State
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [editFormData, setEditFormData] = useState({
-    nama: '',
-    pangkat: ''
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +127,7 @@ const DetailPelari = () => {
 
         const createdAt = (r.createdAt ?? r.created_at ?? "").toString();
         const joinDate =
-          createdAt && createdAt.length >= 10 ? formatDateID(createdAt.slice(0, 10)) : "-";
+          createdAt && createdAt.length >= 10 ? formatDateWIB(createdAt.slice(0, 10)) : "-";
 
         // 2) Fetch session history
         const sessionsRes = await fetch(`${API_BASE}/api/runners/${runnerId}/sessions`);
@@ -159,7 +135,7 @@ const DetailPelari = () => {
         const sessions = Array.isArray(sessionsJson?.data) ? sessionsJson.data : [];
 
         const history = sessions.map((x: any) => ({
-          date: formatDateID(x.date?.toString().slice(0, 10) || ""),
+          date: formatWIB(x.date?.toString() || ""),
           distance: Number(x.distance ?? 0),
           time: x.time ?? "-",
           pace: x.pace ?? "-",
@@ -169,10 +145,10 @@ const DetailPelari = () => {
         // Get first session that met target for achievedDate
         const achievedSession = sessions.find((s: any) => s.targetMet);
         const achievedDate = achievedSession?.date
-          ? formatDateID(achievedSession.date.toString().slice(0, 10))
+          ? formatWIB(achievedSession.date)
           : "Belum tercapai";
 
-        const rank = r.rank ?? "-";
+        const rank = r.pangkat_name || r.rank || "-";
         const name = r.name;
 
         const payload = {
@@ -206,49 +182,6 @@ const DetailPelari = () => {
     };
   }, [runnerId]);
 
-  const handleEditClick = () => {
-    if (!runner) return;
-    setEditFormData({
-      nama: runner.name,
-      pangkat: runner.rank
-    });
-    setEditDialogOpen(true);
-  };
-
-  const handleUpdate = async () => {
-    if (!runner) return;
-    setIsUpdating(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/runners/${runner.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: editFormData.nama,
-          rank: editFormData.pangkat
-        }),
-      });
-
-      if (!res.ok) throw new Error('Gagal memperbarui data');
-
-      toast.success('Profil pelari berhasil diperbarui');
-      setEditDialogOpen(false);
-
-      // Update local state
-      setRunner(prev => prev ? {
-        ...prev,
-        name: editFormData.nama,
-        rank: editFormData.pangkat,
-        email: makeEmail(editFormData.nama, editFormData.pangkat)
-      } : null);
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal memperbarui profil pelari');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
   // Progress chart: dibuat dari data asli yang tersedia (riwayat target_14km untuk runner ini)
   // Kalau belum ada, chart tetap tampil tapi kosong.
@@ -320,19 +253,10 @@ const DetailPelari = () => {
                 <span className="font-mono">{runner.id}</span>
               </span>
               <span className="flex items-center gap-1">
-                <Mail className="h-4 w-4" />
-                {runner.email}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
                 Bergabung {runner.joinDate}
               </span>
             </div>
           </div>
-          <Button variant="outline" className="gap-2" onClick={handleEditClick}>
-            <Pencil className="h-4 w-4" />
-            Edit Profil
-          </Button>
         </div>
       </div>
 
@@ -444,7 +368,7 @@ const DetailPelari = () => {
                     />
                     <div>
                       <p className="font-medium text-sm">{session.distance} km</p>
-                      <p className="text-xs text-muted-foreground">{session.date}</p>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">{session.date}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -458,50 +382,6 @@ const DetailPelari = () => {
         </div>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Profil Pelari</DialogTitle>
-            <DialogDescription>
-              Perbarui informasi nama dan pangkat pelari di sini.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-pangkat" className="text-right">
-                Pangkat
-              </Label>
-              <Input
-                id="edit-pangkat"
-                value={editFormData.pangkat}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, pangkat: e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-nama" className="text-right">
-                Nama
-              </Label>
-              <Input
-                id="edit-nama"
-                value={editFormData.nama}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, nama: e.target.value }))}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={isUpdating}>
-              Batal
-            </Button>
-            <Button onClick={handleUpdate} disabled={isUpdating}>
-              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Simpan Perubahan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

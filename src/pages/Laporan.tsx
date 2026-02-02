@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import html2pdf from "html2pdf.js";
 import * as XLSX from "xlsx";
+import { formatDateWIB } from "@/lib/utils";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
@@ -43,6 +44,7 @@ type ApiTarget14 = {
   kd_smkl?: string;
   kesatuan_name?: string;
   subdis_name?: string;
+  pangkat_name?: string;
 };
 
 type ReportRow = {
@@ -74,15 +76,6 @@ type MasterSubdis = {
   ur_smkl: string;
 };
 
-const formatDateID = (yyyyMmDd: string) => {
-  const d = new Date(`${yyyyMmDd}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return yyyyMmDd;
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(d);
-};
 
 // Data dummy dihapus, akan fetch dari API
 
@@ -96,10 +89,34 @@ const Laporan = () => {
 
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Master Data State
   const [masterKesatuan, setMasterKesatuan] = useState<MasterKesatuan[]>([]);
   const [masterSubdis, setMasterSubdis] = useState<MasterSubdis[]>([]);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("admin_user");
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setCurrentUser(user);
+        // Pre-fill filters based on scope
+        if (user.role === 'admin_kotama' && user.kd_ktm) {
+          setFilterKesatuan(user.kd_ktm);
+        } else if (user.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
+          setFilterKesatuan(user.kd_ktm);
+          setFilterSubdis(user.kd_smkl);
+        }
+      } catch (e) {
+        console.error("Failed to parse admin_user", e);
+      }
+    }
+  }, []);
+
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isAdminKotama = currentUser?.role === 'admin_kotama';
+  const isAdminSatuan = currentUser?.role === 'admin_satuan';
 
   /* ================== LOAD DATA ASLI DARI API ================== */
   useEffect(() => {
@@ -119,7 +136,7 @@ const Laporan = () => {
           no: i + 1,
           id: x.id,
           nama: x.name,
-          pangkat: x.rank,
+          pangkat: x.pangkat_name || x.rank,
           nrp: x.id, // Menggunakan ID sebagai placeholder NRP
           jabatan: "-", // Data belum ada
           umur: "-", // Data belum ada
@@ -264,61 +281,69 @@ const Laporan = () => {
 
       {/* ================= FILTER KESATUAN & SUBDIS ================= */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-4">
-        <div className="flex items-center gap-4">
-          <div className="space-y-2">
-            <Label>Kotama</Label>
-            <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={openKesatuan} className="w-[200px] justify-between">
-                  {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Cari kotama..." />
-                  <CommandList>
-                    <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem value="" onSelect={() => { setFilterKesatuan(""); setFilterSubdis(""); setOpenKesatuan(false); }}>Semua Kotama</CommandItem>
-                      {masterKesatuan.map((k) => (
-                        <CommandItem key={k.kd_ktm} value={k.ur_ktm} onSelect={() => { setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm); setFilterSubdis(""); setOpenKesatuan(false); }}>{k.ur_ktm}</CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          {isSuperAdmin && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kotama
+              </Label>
+              <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={openKesatuan} className="w-full justify-between">
+                    {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari kotama..." />
+                    <CommandList>
+                      <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="" onSelect={() => { setFilterKesatuan(""); setFilterSubdis(""); setOpenKesatuan(false); }}>Semua Kotama</CommandItem>
+                        {masterKesatuan.map((k) => (
+                          <CommandItem key={k.kd_ktm} value={k.ur_ktm} onSelect={() => { setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm); setFilterSubdis(""); setOpenKesatuan(false); }}>{k.ur_ktm}</CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
-          <div className="space-y-2">
-            <Label>Kesatuan</Label>
-            <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={openSubdis} className="w-[200px] justify-between">
-                  {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
-                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Cari kesatuan..." />
-                  <CommandList>
-                    <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
-                    <CommandGroup>
-                      <CommandItem value="" onSelect={() => { setFilterSubdis(""); setOpenSubdis(false); }}>Semua Kesatuan</CommandItem>
-                      {masterSubdis.map((s) => (
-                        <CommandItem key={s.kd_smkl} value={s.ur_smkl} onSelect={() => { setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl); setOpenSubdis(false); }}>{s.ur_smkl}</CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+          {(isSuperAdmin || isAdminKotama) && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kesatuan
+              </Label>
+              <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={openSubdis} className="w-full justify-between">
+                    {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Cari kesatuan..." />
+                    <CommandList>
+                      <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="" onSelect={() => { setFilterSubdis(""); setOpenSubdis(false); }}>Semua Kesatuan</CommandItem>
+                        {masterSubdis.map((s) => (
+                          <CommandItem key={s.kd_smkl} value={s.ur_smkl} onSelect={() => { setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl); setOpenSubdis(false); }}>{s.ur_smkl}</CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Tombol Download */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 lg:col-start-4 justify-end">
             <Button variant="outline" className="gap-2" onClick={handlePreviewPDF} disabled={loading || filteredRows.length === 0}>
               <FileText className="h-4 w-4" /> PDF
             </Button>
@@ -408,7 +433,7 @@ const Laporan = () => {
           <div className="text-center font-bold mb-4">
             <p>LAPORAN PENCAPAIAN PEMBINAAN FISIK MINGGUAN</p>
             <p>SUBDIS BINSISFOMIN DISINFOLAHTAD</p>
-            <p className="uppercase">PERIODE TANGGAL ... S.D. {formatDateID(new Date().toISOString().split('T')[0]).toUpperCase()}</p>
+            <p className="uppercase">PERIODE TANGGAL ... S.D. {formatDateWIB(new Date()).toUpperCase()}</p>
           </div>
 
           {/* Table */}
@@ -473,7 +498,7 @@ const Laporan = () => {
               <p>Kolonel Arh NRP 1920041090570</p>
             </div>
             <div className="w-1/3">
-              <p className="text-left mb-4">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formatDateID(new Date().toISOString().split('T')[0])} <br /> Kasubdis Binsisfomin,</p>
+              <p className="text-left mb-4">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formatDateWIB(new Date())} <br /> Kasubdis Binsisfomin,</p>
               <br /><br /><br /><br />
               <div className="text-left">
                 <p className="font-bold underline">Syaiful Latif, S.Pd., M.M.</p>

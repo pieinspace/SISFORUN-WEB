@@ -17,22 +17,7 @@ const Login = ({ onLogin }: LoginProps) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const [stats, setStats] = useState({ totalRunners: 0, targetAchieved: 0 });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("http://localhost:4001/api/stats/summary");
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      }
-    };
-    fetchStats();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,19 +74,8 @@ const Login = ({ onLogin }: LoginProps) => {
             FORZA
           </h1>
           <p className="text-lg text-white/70 mb-8">
-            Sistem monitoring dan tracking aktivitas lari. Pantau pencapaian target 14 KM pelari dengan mudah.
+            Sistem monitoring dan tracking aktivitas lari TNI AD
           </p>
-          <div className="flex items-center justify-center gap-8 text-white/60">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">{stats.totalRunners.toLocaleString()}</p>
-              <p className="text-sm">Pelari Aktif</p>
-            </div>
-            <div className="h-12 w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">{stats.targetAchieved.toLocaleString()}</p>
-              <p className="text-sm">Target Tercapai</p>
-            </div>
-          </div>
         </div>
       </div>
 
