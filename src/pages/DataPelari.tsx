@@ -436,7 +436,7 @@ const DataPelari = () => {
               <tr>
                 <th>Pangkat</th>
                 <th>Nama</th>
-                <th>Email</th>
+                <th>Korps</th>
                 <th>Total Sesi</th>
                 <th>Total Jarak</th>
                 <th>Status Target</th>
@@ -456,7 +456,7 @@ const DataPelari = () => {
                   <tr key={pelari.id}>
                     <td className="font-medium text-sm text-foreground">{pelari.pangkat}</td>
                     <td className="font-medium text-foreground">{pelari.nama}</td>
-                    <td className="text-muted-foreground">{pelari.email}</td>
+                    <td className="text-muted-foreground">{pelari.kesatuan}</td>
                     <td className="text-foreground">{pelari.totalSesi}</td>
                     <td className="font-semibold text-primary">{(pelari.totalJarak || 0).toFixed(2)} km</td>
                     <td>

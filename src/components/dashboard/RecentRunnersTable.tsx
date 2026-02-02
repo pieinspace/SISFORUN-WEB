@@ -26,7 +26,7 @@ const RecentRunnersTable = ({ runners }: RecentRunnersTableProps) => {
       <div className="px-5 py-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-foreground">Target 14 KM Tercapai</h3>
+            <h3 className="font-semibold text-foreground">Monitoring Target Tercapai</h3>
             <p className="text-sm text-muted-foreground mt-0.5">
               Pelari yang baru mencapai target
             </p>

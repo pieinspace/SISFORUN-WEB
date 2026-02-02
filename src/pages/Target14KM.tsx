@@ -231,9 +231,9 @@ const Target14KM = () => {
             <Trophy className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="page-title">Target 14 KM</h1>
+            <h1 className="page-title">Monitoring Target</h1>
             <p className="page-description">
-              Daftar pelari yang telah mencapai target 14 KM
+              Daftar pelari dalam monitoring target
             </p>
           </div>
         </div>

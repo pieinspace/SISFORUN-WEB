@@ -16,7 +16,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Data Pelari", path: "/pelari" },
-  { icon: Target, label: "Target 14 KM", path: "/target" },
+  { icon: Target, label: "Monitoring Target", path: "/target" },
   { icon: FileText, label: "Laporan", path: "/laporan" },
   { icon: User, label: "Profil", path: "/profil" },
   { icon: Settings, label: "Pengaturan", path: "/pengaturan" },
