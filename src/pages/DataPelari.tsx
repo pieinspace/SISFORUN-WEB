@@ -436,7 +436,7 @@ const DataPelari = () => {
               <tr>
                 <th>Pangkat</th>
                 <th>Nama</th>
-                <th>Korps</th>
+                <th>Corps</th>
                 <th>Total Sesi</th>
                 <th>Total Jarak</th>
                 <th>Status Target</th>
