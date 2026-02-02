@@ -73,7 +73,7 @@ type ApiTargetRow = {
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
-  "http://localhost:4000";
+  "http://localhost:4001";
 
 const subdisList = [
   "Subdis 1",

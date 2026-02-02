@@ -1,16 +1,14 @@
-import { Save, Plus, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -18,45 +16,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface Admin {
   id: number;
   username: string;
+  name: string;
   password?: string;
   role: string;
+  is_active?: boolean;
 }
 
 const DEFAULT_ADMINS: Admin[] = [
-  { id: 1, username: "admin", password: "admin123", role: "Super Admin" },
-  { id: 2, username: "operator1", password: "operator123", role: "Admin" },
+  { id: 1, username: "admin", name: "Super Admin", password: "admin123", role: "Super Admin" },
+  { id: 2, username: "operator1", name: "Operator 1", password: "operator123", role: "Admin" },
 ];
 
+const API_BASE_URL = "http://localhost:4001/api";
+
 const Pengaturan = () => {
-  const [admins, setAdmins] = useState<Admin[]>(() => {
-    const saved = localStorage.getItem("sisforun_admins");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration: Convert "Operator" role to "Admin" AND "email" to "username"
-      return parsed.map((a: any) => {
-        let admin = { ...a };
-        // Role migration
-        if (admin.role === "Operator") admin.role = "Admin";
-        // Email to username migration (fallback)
-        if (admin.email && !admin.username) {
-          admin.username = admin.email.split('@')[0];
-          delete admin.email;
-        }
-        // Ensure password exists (default if missing)
-        if (!admin.password) {
-          admin.password = "123456";
-        }
-        // Remove name if exists
-        delete admin.name;
-        return admin;
-      });
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchAdmins = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/admins`);
+      const data = await response.json();
+      if (data.success) {
+        setAdmins(data.admins);
+      }
+    } catch (error) {
+      console.error("Failed to fetch admins:", error);
     }
-    return DEFAULT_ADMINS;
-  });
+  };
+
+  useEffect(() => {
+    fetchAdmins();
+  }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newAdmin, setNewAdmin] = useState({
@@ -65,27 +62,55 @@ const Pengaturan = () => {
     role: "Admin",
   });
 
-  useEffect(() => {
-    localStorage.setItem("sisforun_admins", JSON.stringify(admins));
-  }, [admins]);
-
-  const handleAddAdmin = () => {
+  const handleAddAdmin = async () => {
     if (!newAdmin.username || !newAdmin.password) return;
 
-    const admin: Admin = {
-      id: Date.now(),
-      username: newAdmin.username,
-      password: newAdmin.password,
-      role: newAdmin.role,
-    };
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/admins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: newAdmin.username,
+          password: newAdmin.password,
+          role: newAdmin.role === "Super Admin" ? "superadmin" : "admin",
+          name: newAdmin.username
+        }),
+      });
 
-    setAdmins([...admins, admin]);
-    setNewAdmin({ username: "", password: "", role: "Admin" });
-    setIsAddDialogOpen(false);
+      const data = await response.json();
+      if (data.success) {
+        await fetchAdmins();
+        setNewAdmin({ username: "", password: "", role: "Admin" });
+        setIsAddDialogOpen(false);
+      } else {
+        alert(data.message || "Gagal menambah admin");
+      }
+    } catch (error) {
+      console.error("Add admin error:", error);
+      alert("Terjadi kesalahan koneksi");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteAdmin = (id: number) => {
-    setAdmins(admins.filter((admin) => admin.id !== id));
+  const handleDeleteAdmin = async (id: number) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus admin ini?")) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/admins/${id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        await fetchAdmins();
+      } else {
+        alert(data.message || "Gagal menghapus admin");
+      }
+    } catch (error) {
+      console.error("Delete admin error:", error);
+      alert("Terjadi kesalahan koneksi");
+    }
   };
 
   return (
@@ -137,6 +162,7 @@ const Pengaturan = () => {
                 <DialogTitle>Tambah Admin Baru</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+
                 <div className="grid gap-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
@@ -174,7 +200,9 @@ const Pengaturan = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Batal</Button>
-                <Button onClick={handleAddAdmin}>Simpan</Button>
+                <Button onClick={handleAddAdmin} disabled={isLoading}>
+                  {isLoading ? "Menyimpan..." : "Simpan"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -187,25 +215,23 @@ const Pengaturan = () => {
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium">
-                  <User className="h-5 w-5" />
+                  {admin.username.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-medium">@{admin.username}</p>
-                  <p className="text-xs text-muted-foreground">Password: {admin.password}</p>
+                  <p className="font-medium">{admin.name || admin.username}</p>
+                  <p className="text-xs text-muted-foreground">@{admin.username}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-muted-foreground">{admin.role}</span>
-                {admin.role !== "Super Admin" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteAdmin(admin.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <span className="text-sm text-muted-foreground capitalize">{admin.role}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteAdmin(admin.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}

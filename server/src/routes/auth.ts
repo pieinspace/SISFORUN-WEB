@@ -1,5 +1,5 @@
-import { Router } from "express";
 import bcrypt from "bcrypt";
+import { Router } from "express";
 import { pool } from "../db";
 
 const router = Router();
@@ -68,10 +68,69 @@ router.post("/login", async (req, res) => {
     }
 });
 
-// GET /api/auth/me - Check current session (optional)
-router.get("/me", async (_req, res) => {
-    // For now, just return unauthorized since we don't have session/JWT yet
-    res.status(401).json({ success: false, message: "Not authenticated" });
+// GET /api/auth/admins - List all admins
+router.get("/admins", async (_req, res) => {
+    try {
+        const result = await pool.query(
+            "SELECT id, username, role, name, is_active FROM login_web ORDER BY id ASC"
+        );
+        res.json({
+            success: true,
+            admins: result.rows
+        });
+    } catch (err) {
+        console.error("Fetch admins error:", err);
+        res.status(500).json({ success: false, message: "Gagal mengambil daftar admin" });
+    }
+});
+
+// POST /api/auth/admins - Create new admin
+router.post("/admins", async (req, res) => {
+    try {
+        const { username, password, role, name } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ success: false, message: "Username dan password wajib diisi" });
+        }
+
+        // Hash password
+        const password_hash = await bcrypt.hash(password, 10);
+
+        const result = await pool.query(
+            "INSERT INTO login_web (username, password_hash, role, name) VALUES ($1, $2, $3, $4) RETURNING id, username, role, name",
+            [username, password_hash, role || 'admin', name || username]
+        );
+
+        res.status(201).json({
+            success: true,
+            admin: result.rows[0]
+        });
+    } catch (err: any) {
+        console.error("Create admin error:", err);
+        if (err.code === '23505') {
+            return res.status(400).json({ success: false, message: "Username sudah digunakan" });
+        }
+        res.status(500).json({ success: false, message: "Gagal menambahkan admin" });
+    }
+});
+
+// DELETE /api/auth/admins/:id - Delete admin
+router.delete("/admins/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Prevent deleting original admin (optional but safer)
+        const checkResult = await pool.query("SELECT username FROM login_web WHERE id = $1", [id]);
+        if (checkResult.rows[0]?.username === 'admin') {
+            return res.status(400).json({ success: false, message: "Admin utama tidak dapat dihapus" });
+        }
+
+        await pool.query("DELETE FROM login_web WHERE id = $1", [id]);
+        res.json({ success: true, message: "Admin berhasil dihapus" });
+    } catch (err) {
+        console.error("Delete admin error:", err);
+        res.status(500).json({ success: false, message: "Gagal menghapus admin" });
+    }
 });
 
 export default router;

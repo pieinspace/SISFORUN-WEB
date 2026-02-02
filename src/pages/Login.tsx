@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface LoginProps {
@@ -17,21 +17,51 @@ const Login = ({ onLogin }: LoginProps) => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const [stats, setStats] = useState({ totalRunners: 0, targetAchieved: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("http://localhost:4001/api/stats/summary");
+        const data = await response.json();
+        if (data.success) {
+          setStats(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Simulate login - replace with actual auth
-    setTimeout(() => {
-      if (username === "admin" && password === "admin123") {
+    try {
+      const response = await fetch("http://localhost:4001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Simpan token/user info jika perlu
+        localStorage.setItem("admin_user", JSON.stringify(data.user));
         onLogin();
         navigate("/");
       } else {
-        setError("Username atau password salah. Silakan coba lagi.");
+        setError(data.message || "Username atau password salah");
       }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Gagal terhubung ke server");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -60,18 +90,13 @@ const Login = ({ onLogin }: LoginProps) => {
           </p>
           <div className="flex items-center justify-center gap-8 text-white/60">
             <div className="text-center">
-              <p className="text-3xl font-bold text-white">1,248</p>
+              <p className="text-3xl font-bold text-white">{stats.totalRunners.toLocaleString()}</p>
               <p className="text-sm">Pelari Aktif</p>
             </div>
             <div className="h-12 w-px bg-white/20" />
             <div className="text-center">
-              <p className="text-3xl font-bold text-white">347</p>
+              <p className="text-3xl font-bold text-white">{stats.targetAchieved.toLocaleString()}</p>
               <p className="text-sm">Target Tercapai</p>
-            </div>
-            <div className="h-12 w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-3xl font-bold text-white">15K</p>
-              <p className="text-sm">Km Minggu Ini</p>
             </div>
           </div>
         </div>
@@ -155,10 +180,6 @@ const Login = ({ onLogin }: LoginProps) => {
                 {isLoading ? "Memproses..." : "Masuk"}
               </Button>
             </form>
-
-            <p className="text-center text-sm text-muted-foreground">
-              Demo: admin / admin123
-            </p>
           </div>
         </div>
       </div>
