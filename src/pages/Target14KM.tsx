@@ -31,10 +31,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
-  Download,
   Eye,
-  FileSpreadsheet,
-  FileText,
   Search,
   Trophy
 } from "lucide-react";
@@ -268,9 +265,9 @@ const Target14KM = () => {
 
       {/* Filters - Grid Layout dengan Kesatuan & Subdis */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Search Nama */}
-          <div className="col-span-12 sm:col-span-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Cari Nama
             </label>
@@ -286,7 +283,7 @@ const Target14KM = () => {
           </div>
 
           {/* Filter Kesatuan - Searchable Dropdown */}
-          <div className="col-span-12 sm:col-span-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Kesatuan
             </label>
@@ -337,7 +334,7 @@ const Target14KM = () => {
           </div>
 
           {/* Filter Subdis - Searchable Dropdown */}
-          <div className="col-span-12 sm:col-span-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Subdis
             </label>
@@ -388,7 +385,7 @@ const Target14KM = () => {
           </div>
 
           {/* Filter Status Validasi */}
-          <div className="col-span-12 sm:col-span-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Status Validasi
             </label>
@@ -405,7 +402,7 @@ const Target14KM = () => {
           </div>
 
           {/* Filter Periode Waktu */}
-          <div className="col-span-12 sm:col-span-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground mb-2">
               Periode Waktu
             </label>
@@ -422,27 +419,7 @@ const Target14KM = () => {
             </Select>
           </div>
 
-          {/* Export Button */}
-          <div className="col-span-12 sm:col-span-2 flex items-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="w-full">
-                  <Download className="mr-2 h-4 w-4" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Export Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+
         </div>
       </div>
 

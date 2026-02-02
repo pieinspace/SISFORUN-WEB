@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, ChevronDown, Clock, Download, Eye, FileSpreadsheet, FileText, Loader2, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, Clock, Eye, Loader2, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -295,9 +295,9 @@ const DataPelari = () => {
 
       {/* Filters */}
       <div className="bg-card rounded-xl border border-border shadow-sm p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search Nama */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-3 space-y-2">
+          <div className="space-y-2">
             <Label>Cari Nama</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -311,7 +311,7 @@ const DataPelari = () => {
           </div>
 
           {/* Filter Kesatuan */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-3 space-y-2">
+          <div className="space-y-2">
             <Label>Kesatuan</Label>
             <Popover open={openKesatuan} onOpenChange={setOpenKesatuan}>
               <PopoverTrigger asChild>
@@ -360,7 +360,7 @@ const DataPelari = () => {
           </div>
 
           {/* Filter Subdis */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-2 space-y-2">
+          <div className="space-y-2">
             <Label>Subdis</Label>
             <Popover open={openSubdis} onOpenChange={setOpenSubdis}>
               <PopoverTrigger asChild>
@@ -409,7 +409,7 @@ const DataPelari = () => {
           </div>
 
           {/* Filter Status */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-2 space-y-2">
+          <div className="space-y-2">
             <Label>Status</Label>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger>
@@ -424,27 +424,7 @@ const DataPelari = () => {
             </Select>
           </div>
 
-          {/* Export Button */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-2 flex items-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="w-full gap-2">
-                  <Download className="h-4 w-4" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => alert("Export PDF")}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Export PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alert("Export Excel")}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Export Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+
         </div>
       </div>
 
