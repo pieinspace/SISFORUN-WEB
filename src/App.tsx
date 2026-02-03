@@ -19,13 +19,17 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return !!localStorage.getItem("admin_token");
+  });
 
   const handleLogin = () => {
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
     setIsAuthenticated(false);
   };
 

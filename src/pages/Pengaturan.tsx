@@ -16,8 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Save, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Plus, Save, Trash2, Search, ChevronDown, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface Admin {
   id: number;
@@ -99,6 +113,15 @@ const Pengaturan = () => {
 
   const [masterKotama, setMasterKotama] = useState<MasterKotama[]>([]);
   const [masterKesatuan, setMasterKesatuan] = useState<MasterKesatuan[]>([]);
+  const [masterKesatuanFilter, setMasterKesatuanFilter] = useState<MasterKesatuan[]>([]);
+
+  // Filter States
+  const [searchAdmin, setSearchAdmin] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterKotama, setFilterKotama] = useState("");
+  const [filterSubdis, setFilterSubdis] = useState("");
+  const [openKotamaFilter, setOpenKotamaFilter] = useState(false);
+  const [openSubdisFilter, setOpenSubdisFilter] = useState(false);
 
   // Fetch Master Data
   useEffect(() => {
@@ -112,7 +135,7 @@ const Pengaturan = () => {
     fetchMasters();
   }, []);
 
-  // Fetch Subdis when kotama changes
+  // Fetch Subdis when kotama changes (Add/Edit)
   useEffect(() => {
     if (!newAdmin.kd_ktm) {
       setMasterKesatuan([]);
@@ -127,6 +150,39 @@ const Pengaturan = () => {
     };
     fetchSubdis();
   }, [newAdmin.kd_ktm]);
+
+  // Fetch Subdis when kotama changes (Filter)
+  useEffect(() => {
+    if (!filterKotama) {
+      setMasterKesatuanFilter([]);
+      setFilterSubdis("");
+      return;
+    }
+    const fetchSubdis = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL.replace('/auth', '')}/master/subdis/${filterKotama}`);
+        const json = await res.json();
+        if (json.success) setMasterKesatuanFilter(json.data);
+      } catch (e) { console.error(e); }
+    };
+    fetchSubdis();
+  }, [filterKotama]);
+
+  const filteredAdmins = useMemo(() => {
+    return admins.filter((admin) => {
+      const matchSearch =
+        admin.name?.toLowerCase().includes(searchAdmin.toLowerCase()) ||
+        admin.username?.toLowerCase().includes(searchAdmin.toLowerCase());
+
+      const matchRole =
+        filterRole === "all" || admin.role === filterRole;
+
+      const matchKotama = !filterKotama || admin.kd_ktm === filterKotama;
+      const matchSubdis = !filterSubdis || admin.kd_smkl === filterSubdis;
+
+      return matchSearch && matchRole && matchKotama && matchSubdis;
+    });
+  }, [admins, searchAdmin, filterRole, filterKotama, filterSubdis]);
 
   const handleAddAdmin = async () => {
     if (!newAdmin.username || !newAdmin.password) return;
@@ -270,7 +326,7 @@ const Pengaturan = () => {
       {/* Admin List */}
       {isSuperAdmin && (
         <div className="bg-card rounded-xl border border-border shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-foreground">Daftar Admin</h3>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
@@ -369,38 +425,183 @@ const Pengaturan = () => {
               </DialogContent>
             </Dialog>
           </div>
-          <div className="space-y-3">
-            {admins.map((admin) => (
-              <div
-                key={admin.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium">
-                    {admin.username.substring(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="font-medium">{admin.name || admin.username}</p>
-                    <p className="text-xs text-muted-foreground">@{admin.username}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">
-                    {admin.role === 'superadmin' ? 'Super Admin' :
-                      admin.role === 'admin_kotama' ? 'Admin Kotama' :
-                        admin.role === 'admin_satuan' ? 'Admin Satuan' : admin.role}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteAdmin(admin.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+
+          {/* Filters Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 rounded-xl border border-border bg-background/30 shadow-inner">
+            {/* Search Username/Name */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cari Admin</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Cari nama atau username..."
+                  value={searchAdmin}
+                  onChange={(e) => setSearchAdmin(e.target.value)}
+                  className="pl-9 h-9"
+                />
               </div>
-            ))}
+            </div>
+
+            {/* Filter Role */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</Label>
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Semua Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Role</SelectItem>
+                  <SelectItem value="superadmin">Super Admin</SelectItem>
+                  <SelectItem value="admin_kotama">Admin Kotama</SelectItem>
+                  <SelectItem value="admin_satuan">Admin Satuan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter Kotama */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kotama</Label>
+              <Popover open={openKotamaFilter} onOpenChange={setOpenKotamaFilter}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal h-9 bg-background/50"
+                  >
+                    {masterKotama.find(k => k.kd_ktm === filterKotama)?.ur_ktm || "Semua Kotama"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari kotama..." />
+                    <CommandList>
+                      <CommandEmpty>Kotama tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setFilterKotama("");
+                            setOpenKotamaFilter(false);
+                          }}
+                        >
+                          <CheckCircle2 className={cn("mr-2 h-4 w-4", filterKotama === "" ? "opacity-100" : "opacity-0")} />
+                          Semua Kotama
+                        </CommandItem>
+                        {masterKotama.map((k) => (
+                          <CommandItem
+                            key={k.kd_ktm}
+                            value={k.ur_ktm}
+                            onSelect={() => {
+                              setFilterKotama(k.kd_ktm === filterKotama ? "" : k.kd_ktm);
+                              setOpenKotamaFilter(false);
+                            }}
+                          >
+                            <CheckCircle2 className={cn("mr-2 h-4 w-4", filterKotama === k.kd_ktm ? "opacity-100" : "opacity-0")} />
+                            {k.ur_ktm}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Filter Kesatuan */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Kesatuan</Label>
+              <Popover open={openSubdisFilter} onOpenChange={setOpenSubdisFilter}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    disabled={!filterKotama}
+                    className="w-full justify-between font-normal h-9 bg-background/50"
+                  >
+                    {masterKesatuanFilter.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari kesatuan..." />
+                    <CommandList>
+                      <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setFilterSubdis("");
+                            setOpenSubdisFilter(false);
+                          }}
+                        >
+                          <CheckCircle2 className={cn("mr-2 h-4 w-4", filterSubdis === "" ? "opacity-100" : "opacity-0")} />
+                          Semua Kesatuan
+                        </CommandItem>
+                        {masterKesatuanFilter.map((s) => (
+                          <CommandItem
+                            key={s.kd_smkl}
+                            value={s.ur_smkl}
+                            onSelect={() => {
+                              setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                              setOpenSubdisFilter(false);
+                            }}
+                          >
+                            <CheckCircle2 className={cn("mr-2 h-4 w-4", filterSubdis === s.kd_smkl ? "opacity-100" : "opacity-0")} />
+                            {s.ur_smkl}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {filteredAdmins.length > 0 ? (
+              filteredAdmins.map((admin) => (
+                <div
+                  key={admin.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-muted/50 transition-all hover:bg-muted/70"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary font-medium border border-primary/20">
+                      {admin.username.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{admin.name || admin.username}</p>
+                      <p className="text-xs text-muted-foreground font-mono">@{admin.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right flex flex-col items-end">
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter",
+                        admin.role === 'superadmin' ? "bg-primary/20 text-primary border border-primary/30" :
+                          admin.role === 'admin_kotama' ? "bg-amber-500/20 text-amber-600 border border-amber-500/30" :
+                            "bg-blue-500/20 text-blue-600 border border-blue-500/30"
+                      )}>
+                        {admin.role === 'superadmin' ? 'Super Admin' :
+                          admin.role === 'admin_kotama' ? 'Admin Kotama' :
+                            admin.role === 'admin_satuan' ? 'Admin Satuan' : admin.role}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeleteAdmin(admin.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10 border border-dashed border-border rounded-lg bg-background/50">
+                <p className="text-muted-foreground">Tidak ada admin yang ditemukan.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

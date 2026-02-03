@@ -40,18 +40,30 @@ const Dashboard = () => {
   const [targets, setTargets] = useState<ApiTarget14[]>([]);
 
   useEffect(() => {
-    // total runners
     const token = localStorage.getItem("admin_token");
     const headers = { "Authorization": `Bearer ${token}` };
 
+    const handleAuthError = () => {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+      window.location.href = "/login";
+    };
+
+    // total runners
     fetch(`${API_BASE}/api/runners`, { headers })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401 || r.status === 403) return handleAuthError();
+        return r.json();
+      })
       .then((j) => setRunners(Array.isArray(j?.data) ? j.data : []))
       .catch(() => setRunners([]));
 
     // target 14km
     fetch(`${API_BASE}/api/targets/14km`, { headers })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.status === 401 || r.status === 403) return handleAuthError();
+        return r.json();
+      })
       .then((j) => setTargets(Array.isArray(j?.data) ? j.data : []))
       .catch(() => setTargets([]));
   }, []);

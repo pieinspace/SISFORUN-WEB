@@ -189,15 +189,25 @@ const DataPelari = () => {
 
   // Fetch Subdis when filterKesatuan changes
   useEffect(() => {
-    if (!filterKesatuan) {
-      setMasterSubdis([]);
-      setFilterSubdis("");
-      return;
-    }
-
     const fetchSubdis = async () => {
+      if (!filterKesatuan) {
+        setMasterSubdis([]);
+        setFilterSubdis("");
+        return;
+      }
+
       try {
-        const res = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`);
+        const token = localStorage.getItem("admin_token");
+        const headers = { "Authorization": `Bearer ${token}` };
+        const res = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`, { headers });
+
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
+          window.location.href = "/login";
+          return;
+        }
+
         const data = await res.json();
         if (data.success) {
           setMasterSubdis(data.data);
@@ -206,6 +216,7 @@ const DataPelari = () => {
         console.error("Failed to fetch subdis:", error);
       }
     };
+
     fetchSubdis();
   }, [filterKesatuan]);
 
@@ -218,6 +229,14 @@ const DataPelari = () => {
         const headers = { "Authorization": `Bearer ${token}` };
 
         const runnersRes = await fetch(`${API_BASE}/api/runners`, { headers });
+
+        if (runnersRes.status === 401 || runnersRes.status === 403) {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
+          window.location.href = "/login";
+          return;
+        }
+
         const runnersJson = await runnersRes.json();
         const runners: ApiRunner[] = Array.isArray(runnersJson?.data) ? runnersJson.data : [];
 
@@ -275,6 +294,7 @@ const DataPelari = () => {
 
       } catch (err) {
         console.error("Failed to fetch data in DataPelari:", err);
+        toast.error("Gagal mengambil data pelari. Silakan cek koneksi atau login ulang.");
       } finally {
         setLoading(false);
       }
