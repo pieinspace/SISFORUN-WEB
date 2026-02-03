@@ -111,40 +111,73 @@ Default Password: `admin123`
 ### Kotama Admins
 | No | Kotama Name | Username | Role |
 |---|---|---|---|
-| 1 | KODAM I / BUKIT BARISAN | admin_ktm01 | Admin Kotama |
-| 2 | KODAM II / SRIWIJAYA | admin_ktm02 | Admin Kotama |
-| 3 | KODAM III / SILIWANGI | admin_ktm03 | Admin Kotama |
-| 4 | KODAM IV / DIPONEGORO | admin_ktm04 | Admin Kotama |
-| 5 | KODAM V / BRAWIJAYA | admin_ktm05 | Admin Kotama |
-| 6 | KODAM VI / MULAWARMAN | admin_ktm06 | Admin Kotama |
-| 7 | KODAM IX / UDAYANA | admin_ktm09 | Admin Kotama |
-| 8 | KODAM JAYA / JAYAKARTA | admin_ktm13 | Admin Kotama |
-| 9 | DISINFOLAHTAD | admin_ktm99 | Admin Kotama |
+| 1 | KODAM I/BB | admin_ktm01 | Admin Kotama |
+| 2 | KODAM II/SWJ | admin_ktm02 | Admin Kotama |
+| 3 | KODAM III/SLW | admin_ktm03 | Admin Kotama |
+| 4 | KODAM IV/DIP | admin_ktm04 | Admin Kotama |
+| 5 | KODAM V/BRW | admin_ktm05 | Admin Kotama |
+| 6 | KODAM VI/MLW | admin_ktm06 | Admin Kotama |
+| 7 | KODAM XVIII/KSR | admin_ktm08 | Admin Kotama |
+| 8 | KODAM IX/UDY | admin_ktm09 | Admin Kotama |
+| 9 | KODAM IM | admin_ktm10 | Admin Kotama |
+| 10 | KODAM XII/TPR | admin_ktm12 | Admin Kotama |
+| 11 | KODAM XIII/MDK | admin_ktm13 | Admin Kotama |
+| 12 | KODAM XIV/HSN | admin_ktm14 | Admin Kotama |
+| 13 | KODAM JAYA | admin_ktm15 | Admin Kotama |
+| 14 | KODAM XV/PTM | admin_ktm16 | Admin Kotama |
+| 15 | KODAM XVII/CEN | admin_ktm17 | Admin Kotama |
+| 16 | KOPASSUS | admin_ktm18 | Admin Kotama |
+| 17 | KOSTRAD | admin_ktm19 | Admin Kotama |
+| 18 | KODIKLATAD | admin_ktm20 | Admin Kotama |
+| 19 | PUSZIAD | admin_ktm21 | Admin Kotama |
+| 20 | PUSBEKANGAD | admin_ktm22 | Admin Kotama |
+| 21 | PUSPALAD | admin_ktm23 | Admin Kotama |
+| 22 | PUSKOMLEKAD | admin_ktm24 | Admin Kotama |
+| 23 | PUSKESAD | admin_ktm25 | Admin Kotama |
+| 24 | DITAJENAD | admin_ktm26 | Admin Kotama |
+| 25 | DITTOPAD | admin_ktm27 | Admin Kotama |
+| 26 | DITKUAD | admin_ktm28 | Admin Kotama |
+| 27 | DITKUMAD | admin_ktm29 | Admin Kotama |
+| 28 | RSPAD GATOT SOEBROTO | admin_ktm30 | Admin Kotama |
+| 29 | KODAM XIX/TT | admin_ktm31 | Admin Kotama |
+| 30 | DISPENAD | admin_ktm41 | Admin Kotama |
+| 31 | DISBINTALAD | admin_ktm42 | Admin Kotama |
+| 32 | DISJASAD | admin_ktm43 | Admin Kotama |
+| 33 | DISKPSAD | admin_ktm44 | Admin Kotama |
+| 34 | DISLITBANGAD | admin_ktm45 | Admin Kotama |
+| 35 | DISINFOLAHTAD | admin_ktm46 | Admin Kotama |
+| 36 | DISJARAHAD | admin_ktm47 | Admin Kotama |
+| 37 | DISLAIKAD | admin_ktm48 | Admin Kotama |
+| 38 | DISADAAD | admin_ktm49 | Admin Kotama |
+| 39 | DISMINPERSAD | admin_ktm50 | Admin Kotama |
+| 40 | PUSSENIF | admin_ktm61 | Admin Kotama |
+| 41 | PUSSENKAV | admin_ktm62 | Admin Kotama |
+| 42 | PUSSENARMED | admin_ktm63 | Admin Kotama |
+| 43 | PUSSENARHANUD | admin_ktm64 | Admin Kotama |
+| 44 | PUSPOMAD | admin_ktm65 | Admin Kotama |
+| 45 | PUSTERAD | admin_ktm66 | Admin Kotama |
+| 46 | PUSPENERBAD | admin_ktm67 | Admin Kotama |
+| 47 | PUSINTELAD | admin_ktm68 | Admin Kotama |
+| 48 | PUSSIBERAD | admin_ktm69 | Admin Kotama |
+| 49 | AKMIL | admin_ktm71 | Admin Kotama |
+| 50 | SESKOAD | admin_ktm72 | Admin Kotama |
+| 51 | SECAPAAD | admin_ktm73 | Admin Kotama |
+| 52 | DENMABESAD | admin_ktm81 | Admin Kotama |
+| 53 | ITJENAD | admin_ktm82 | Admin Kotama |
+| 54 | KODIKLAT TNI AD | admin_ktm94 | Admin Kotama |
 
-### Kesatuan Admins
+
+### Kesatuan Admins (Sample List)
 | No | Kesatuan Name | Username | Role |
 |---|---|---|---|
-| 1 | KOREM 044/GAPO | admin_sat2A01 | Admin Satuan |
-| 2 | YON KAV 5/DPC | admin_sat2B01 | Admin Satuan |
-| 3 | KOREM 064/MY | admin_sat3A01 | Admin Satuan |
-| 4 | YONIF 310/KK | admin_sat3B01 | Admin Satuan |
-| 5 | KOREM 072/PMK | admin_sat4A01 | Admin Satuan |
-| 6 | YONIF 400/BR | admin_sat4B01 | Admin Satuan |
-| 7 | KOREM 084/BJ | admin_sat5A01 | Admin Satuan |
-| 8 | YON KAV 3/AC | admin_sat5B01 | Admin Satuan |
-| 9 | KOREM 091/ASN | admin_sat6A01 | Admin Satuan |
-| 10 | YONIF 600/R | admin_sat6B01 | Admin Satuan |
-| 11 | KOREM 161/WS | admin_sat9A01 | Admin Satuan |
-| 12 | YONIF 742/SWY | admin_sat9B01 | Admin Satuan |
-| 13 | KOREM 051/WKT | admin_sat13A1 | Admin Satuan |
-| 14 | YON KAV 7/PS | admin_sat13B1 | Admin Satuan |
-| 15 | YONIF 100 /PRAJURIT SETIA | admin_sat1A0B | Admin Satuan |
-| 16 | BRIGIF 7 /RIMBA RAYA | admin_sat1A1A | Admin Satuan |
-| 17 | YONIF 122 /TOMBAK SAKTI | admin_sat1A1B | Admin Satuan |
-| 18 | YONIF 125 /SIMBISA | admin_sat1A1C | Admin Satuan |
-| 19 | YONIF 126 /KALA SAKTI | admin_sat1A1D | Admin Satuan |
-| 20 | KODIM 0201 /MEDAN | admin_sat2Z0B | Admin Satuan |
-| 21 | KOREM 022 /PANTAI TIMUR | admin_sat2Z3A | Admin Satuan |
-| 22 | KODIM 0207 /SIMALUNGUN REM 022 | admin_sat2Z3B | Admin Satuan |
-| 23 | KODIM 0208 /ASAHAN REM 022 | admin_sat2Z3C | Admin Satuan |
-| 24 | DISINFOLAHTAD | admin_sat9901 | Admin Satuan |
+| 1 | YONIF 100 /PRAJURIT SETIA | admin_smkl1A0B | Admin Satuan |
+| 2 | BRIGIF 7 /RIMBA RAYA | admin_smkl1A1A | Admin Satuan |
+| 3 | YONIF 122 /TOMBAK SAKTI | admin_smkl1A1B | Admin Satuan |
+| 4 | KODIM 0201 /MEDAN | admin_smkl2Z0B | Admin Satuan |
+| 5 | INFOLAHTADAM I /BB | admin_smkl4T0B | Admin Satuan |
+| 6 | PUSDIKIF PUSSENIF | admin_smkl4A0X | Admin Satuan |
+| 7 | DISINFOLAHTAD | admin_smkl4T0B | Admin Satuan |
+| ... | ... | ... | ... |
+
+*Note: There are over 300 Satuan admin accounts created. Use the pattern `admin_smkl[CODE]` to log in.*
+

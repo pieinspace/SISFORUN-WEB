@@ -114,6 +114,20 @@ async function run() {
         }
         console.log("✅ Kotama Admins Created");
 
+        // 5b. Create Admins for Satuan
+        console.log("👤 Creating Admins for Satuans...");
+        for (const s of smklData) {
+            if (!s.kd_smkl) continue;
+            const username = `admin_smkl${s.kd_smkl}`;
+            await pool.query(
+                `INSERT INTO login_web (username, password_hash, role, name, kd_ktm, kd_smkl) 
+         VALUES ($1, $2, 'admin_satuan', $3, $4, $5) 
+         ON CONFLICT (username) DO NOTHING`,
+                [username, hash, `Admin ${s.ur_smkl}`, s.kd_ktm, s.kd_smkl]
+            );
+        }
+        console.log("✅ Satuan Admins Created");
+
         // 6. Populate Personnel (Military & ASN) for all Kotamas
         console.log("👥 Populating personnel for all Kotamas...");
 
