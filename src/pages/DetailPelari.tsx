@@ -74,7 +74,11 @@ const makeEmail = (name: string, rank: string) => {
   return `${rankLower}.${firstName}@tni.mil.id`;
 };
 
-const calcTargetAchieved = (totalDistance: number) => totalDistance >= 14;
+const calcTargetAchieved = (totalDistance: number, rankCode: string) => {
+  const pk = parseInt(rankCode || "0");
+  const targetGoal = pk <= 45 ? 10 : 14;
+  return totalDistance >= targetGoal;
+};
 
 const DetailPelari = () => {
   const { id } = useParams();
@@ -139,7 +143,11 @@ const DetailPelari = () => {
           distance: Number(x.distance ?? 0),
           time: x.time ?? "-",
           pace: x.pace ?? "-",
-          targetMet: x.targetMet ?? false,
+          targetMet: (() => {
+            const pk = parseInt(r.kd_pkt || "0");
+            const targetGoal = pk <= 45 ? 10 : 14;
+            return Number(x.distance ?? 0) >= targetGoal;
+          })(),
         }));
 
         // Get first session that met target for achievedDate
@@ -161,7 +169,7 @@ const DetailPelari = () => {
           totalTime: r.totalTime || "-",
           avgPace: r.avgPace || "-",
           totalSessions,
-          targetAchieved: calcTargetAchieved(totalDistance),
+          targetAchieved: calcTargetAchieved(totalDistance, r.kd_pkt || "0"),
           achievedDate,
         };
 
@@ -244,7 +252,11 @@ const DetailPelari = () => {
               {runner.targetAchieved && (
                 <span className="badge-success">
                   <Target className="mr-1 h-3 w-3" />
-                  14 KM Tercapai
+                  {(() => {
+                    const idStr = String(runner.id || "");
+                    const pkVal = parseInt(idStr.split('-')[0]) || 0;
+                    return (pkVal > 0 && pkVal <= 45) ? '10 KM' : '14 KM';
+                  })()} Tercapai
                 </span>
               )}
             </div>

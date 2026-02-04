@@ -11,7 +11,7 @@ const router = Router();
 router.get("/14km", authenticateToken, async (req, res) => {
   try {
     const user = req.user;
-    let whereClause = "WHERE rs.distance_km >= 14";
+    let whereClause = "WHERE ((u.kd_pkt <= '45' AND rs.distance_km >= 10) OR (u.kd_pkt > '45' AND rs.distance_km >= 14))";
     const params: any[] = [];
 
     if (user?.role === 'admin_kotama' && user.kd_ktm) {
@@ -148,7 +148,8 @@ router.get("/daily-achievement", async (_req, res) => {
         COUNT(rs.id) AS targets_achieved,
         SUM(rs.distance_km) AS total_distance
       FROM run_sessions rs
-      WHERE rs.distance_km >= 14
+      JOIN users u ON u.id = rs.user_id
+      WHERE ((u.kd_pkt <= '45' AND rs.distance_km >= 10) OR (u.kd_pkt > '45' AND rs.distance_km >= 14))
         AND rs.date_created >= NOW() - INTERVAL '7 days'
       GROUP BY DATE(rs.date_created), EXTRACT(DOW FROM rs.date_created)
       ORDER BY date ASC

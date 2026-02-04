@@ -33,6 +33,7 @@ type ApiTarget14 = {
   kesatuan_name?: string;
   subdis_name?: string;
   corps_name?: string;
+  kd_pkt?: string;
 };
 
 const Dashboard = () => {
@@ -78,16 +79,20 @@ const Dashboard = () => {
   const recentTableData = useMemo(() => {
     // ambil 8 terbaru
     const latest = [...targets].slice(0, 8);
-    return latest.map((t) => ({
-      id: t.id,
-      name: t.name,
-      rank: t.pangkat_name || t.rank,
-      distanceKm: Number(t.distance_km),
-      targetKm: 14,
-      status: t.validation_status, // RecentRunnersTable sudah handle pending/validated
-      kotama: t.kesatuan_name || "-",
-      kesatuan: t.subdis_name || "-",
-    }));
+    return latest.map((t) => {
+      const pk = parseInt(t.kd_pkt || "0");
+      const targetKm = pk <= 45 ? 10 : 14;
+      return {
+        id: t.id,
+        name: t.name,
+        rank: t.pangkat_name || t.rank,
+        distanceKm: Number(t.distance_km),
+        targetKm: targetKm,
+        status: t.validation_status,
+        kotama: t.kesatuan_name || "-",
+        kesatuan: t.subdis_name || "-",
+      };
+    });
   }, [targets]);
 
   return (
@@ -110,7 +115,7 @@ const Dashboard = () => {
         <StatCard
           title="Target Tercapai"
           value={String(totalTarget)}
-          subtitle="Mencapai 14 KM"
+          subtitle="Melewati Target"
           icon={Target}
           trend={{ value: 0, isPositive: true }}
           variant="primary"

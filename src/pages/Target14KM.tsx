@@ -311,7 +311,7 @@ const Target14KM = () => {
           <div>
             <h1 className="page-title">Monitoring Target</h1>
             <p className="page-description">
-              Daftar pelari dalam monitoring target
+              Daftar pelari yang telah mencapai target (Militer 14 KM, ASN 10 KM)
             </p>
           </div>
         </div>

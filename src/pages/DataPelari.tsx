@@ -251,14 +251,19 @@ const DataPelari = () => {
 
           let statusTarget = "Belum Mulai";
           if (target) {
-            if (target.distance_km >= 14 && target.validation_status === "validated") {
+            const pk = parseInt(r.kd_pkt || "0");
+            const targetGoal = pk <= 45 ? 10 : 14;
+            if (target.distance_km >= targetGoal && target.validation_status === "validated") {
               statusTarget = "Tercapai";
             } else {
               statusTarget = "Dalam Proses";
             }
           } else {
+            const pk = parseInt(r.kd_pkt || "0");
+            const targetGoal = pk <= 45 ? 10 : 14;
             const dist = Number(r.totalDistance ?? r.total_distance ?? 0);
             if (dist > 0) statusTarget = "Dalam Proses";
+            if (dist >= targetGoal) statusTarget = "Tercapai";
           }
 
           const rank = r.pangkat_name || r.rank || "-";

@@ -45,6 +45,7 @@ type ApiTarget14 = {
   kesatuan_name?: string;
   subdis_name?: string;
   pangkat_name?: string;
+  kd_pkt?: string;
 };
 
 type ReportRow = {
@@ -63,6 +64,7 @@ type ReportRow = {
   subdis: string;
   kd_ktm: string;
   kd_smkl: string;
+  kd_pkt: string;
 };
 
 type MasterKesatuan = {
@@ -143,11 +145,16 @@ const Laporan = () => {
           lariJalan: "", // Kosong sesuai template
           jarakKm: Number(x.distance_km ?? 0),
           dataAplikasi: x.time_taken ? `${x.time_taken} / ${x.pace}` : "-",
-          ket: x.validation_status === "validated" ? "" : "Belum Valid",
+          ket: (() => {
+            const pk = parseInt(x.kd_pkt || "0");
+            const targetGoal = pk <= 45 ? 10 : 14;
+            return x.distance_km >= targetGoal ? "" : "Belum Target";
+          })(),
           kesatuan: x.kesatuan_name ?? x.kesatuan ?? "-",
           subdis: x.subdis_name ?? x.subdis ?? "-",
           kd_ktm: x.kd_ktm ?? "",
           kd_smkl: x.kd_smkl ?? "",
+          kd_pkt: x.kd_pkt ?? "",
         }));
 
         if (!cancelled) setRows(mapped);
@@ -466,10 +473,15 @@ const Laporan = () => {
               <tr>
                 <td className="border border-black p-1 text-center font-bold"></td>
                 <td className="border border-black p-1 text-center font-bold">A</td>
-                <td colSpan={9} className="border border-black p-1 font-bold">MILITER</td>
+                <td colSpan={9} className="border border-black p-1 font-bold">MILITER (Target 14 KM)</td>
               </tr>
 
-              {filteredRows.map((row) => (
+              {filteredRows.filter(r => {
+                const idStr = String(r.id || "");
+                const pkValue = parseInt(idStr.split('-')[0]) || 0;
+                // Temporarily return true while we decide how to group rows
+                return true;
+              }).map((row) => (
                 <tr key={row.id}>
                   <td className="border border-black p-1 text-center">{row.no}</td>
                   <td className="border border-black p-1 text-center">{row.no}</td> {/* Dummy BAG */}
@@ -513,20 +525,38 @@ const Laporan = () => {
             <div className="flex">
               <div className="w-6">A.</div>
               <div>
-                <p>Militer : {filteredRows.length} Orang</p>
+                <p>Militer : {filteredRows.filter(r => {
+                  const pk = parseInt(r.kd_pkt || "0") || 0;
+                  return pk > 45 || pk === 0;
+                }).length} Orang</p>
                 <div className="pl-4">
-                  <p>1. Tercapai : {filteredRows.filter(r => !r.ket).length} Orang</p>
-                  <p>2. Tidak tercapai : {filteredRows.filter(r => r.ket).length} Orang</p>
+                  <p>1. Tercapai : {filteredRows.filter(r => {
+                    const pk = parseInt(r.kd_pkt || "0") || 0;
+                    return (pk > 45 || pk === 0) && !r.ket;
+                  }).length} Orang</p>
+                  <p>2. Tidak tercapai : {filteredRows.filter(r => {
+                    const pk = parseInt(r.kd_pkt || "0") || 0;
+                    return (pk > 45 || pk === 0) && !!r.ket;
+                  }).length} Orang</p>
                 </div>
               </div>
             </div>
             <div className="flex mt-2">
               <div className="w-6">B.</div>
               <div>
-                <p>ASN : 0 Orang</p>
+                <p>ASN : {filteredRows.filter(r => {
+                  const pk = parseInt(r.kd_pkt || "0") || 0;
+                  return pk > 0 && pk <= 45;
+                }).length} Orang</p>
                 <div className="pl-4">
-                  <p>1. Tercapai : 0 Orang</p>
-                  <p>2. Tidak tercapai : 0 Orang</p>
+                  <p>1. Tercapai : {filteredRows.filter(r => {
+                    const pk = parseInt(r.kd_pkt || "0") || 0;
+                    return pk > 0 && pk <= 45 && !r.ket;
+                  }).length} Orang</p>
+                  <p>2. Tidak tercapai : {filteredRows.filter(r => {
+                    const pk = parseInt(r.kd_pkt || "0") || 0;
+                    return pk > 0 && pk <= 45 && !!r.ket;
+                  }).length} Orang</p>
                 </div>
               </div>
             </div>
