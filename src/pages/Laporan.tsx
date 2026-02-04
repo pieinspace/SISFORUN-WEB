@@ -1,5 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
-import { FileText, FileSpreadsheet, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -10,20 +8,22 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import html2pdf from "html2pdf.js";
-import * as XLSX from "xlsx";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { formatDateWIB } from "@/lib/utils";
+import html2pdf from "html2pdf.js";
+import { ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
@@ -125,10 +125,15 @@ const Laporan = () => {
     let cancelled = false;
 
     const load = async () => {
+      if (!filterKesatuan || !filterSubdis) {
+        setRows([]);
+        return;
+      }
+
       setLoading(true);
       try {
         const token = localStorage.getItem("admin_token");
-        const res = await fetch(`${API_BASE}/api/targets/14km`, {
+        const res = await fetch(`${API_BASE}/api/targets/report?kd_ktm=${filterKesatuan}&kd_smkl=${filterSubdis}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const json = await res.json();
@@ -139,16 +144,19 @@ const Laporan = () => {
           id: x.id,
           nama: x.name,
           pangkat: x.pangkat_name || x.rank,
-          nrp: x.id, // Menggunakan ID sebagai placeholder NRP
-          jabatan: "-", // Data belum ada
-          umur: "-", // Data belum ada
-          lariJalan: "", // Kosong sesuai template
+          nrp: x.id,
+          jabatan: "-",
+          umur: "-",
+          lariJalan: "",
           jarakKm: Number(x.distance_km ?? 0),
-          dataAplikasi: x.time_taken ? `${x.time_taken} / ${x.pace}` : "-",
+          dataAplikasi: x.time_taken && x.time_taken !== "-" ? `${x.time_taken} / ${x.pace}` : "-",
           ket: (() => {
             const pk = parseInt(x.kd_pkt || "0");
             const targetGoal = pk <= 45 ? 10 : 14;
-            return x.distance_km >= targetGoal ? "" : "Belum Target";
+            if (x.distance_km >= targetGoal) {
+              return x.validation_status === "validated" ? "" : "Belum Valid";
+            }
+            return "Belum Selesai";
           })(),
           kesatuan: x.kesatuan_name ?? x.kesatuan ?? "-",
           subdis: x.subdis_name ?? x.subdis ?? "-",
@@ -169,7 +177,7 @@ const Laporan = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [filterKesatuan, filterSubdis]);
 
   /* ================== LOAD MASTER DATA ================== */
   useEffect(() => {
@@ -256,7 +264,7 @@ const Laporan = () => {
       "LARI / JALAN": r.lariJalan,
       "JARAK TEMPUH (METER)": (r.jarakKm * 1000).toLocaleString('id-ID'),
       "DATA APLIKASI": r.dataAplikasi,
-      KET: r.ket,
+      KET: r.ket || "Terpenuhi",
     }));
 
     const wb = XLSX.utils.book_new();
@@ -349,14 +357,29 @@ const Laporan = () => {
             </div>
           )}
 
+          {isAdminSatuan && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Kesatuan
+              </Label>
+              <div className="h-10 flex items-center px-4 bg-muted/50 rounded-md border border-border text-sm font-medium text-foreground/80">
+                {currentUser?.subdis_name || currentUser?.kesatuan_name || "Kesatuan Terdaftar"}
+              </div>
+            </div>
+          )}
+
           {/* Tombol Download */}
           <div className="flex gap-2 lg:col-start-4 justify-end">
-            <Button variant="outline" className="gap-2" onClick={handlePreviewPDF} disabled={loading || filteredRows.length === 0}>
-              <FileText className="h-4 w-4" /> PDF
-            </Button>
-            <Button variant="default" className="gap-2" onClick={generateExcel} disabled={loading || filteredRows.length === 0}>
-              <FileSpreadsheet className="h-4 w-4" /> Excel
-            </Button>
+            {filterKesatuan && filterSubdis && (
+              <>
+                <Button variant="outline" className="gap-2" onClick={handlePreviewPDF} disabled={loading || filteredRows.length === 0}>
+                  <FileText className="h-4 w-4" /> PDF
+                </Button>
+                <Button variant="default" className="gap-2" onClick={generateExcel} disabled={loading || filteredRows.length === 0}>
+                  <FileSpreadsheet className="h-4 w-4" /> Excel
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -387,40 +410,46 @@ const Laporan = () => {
       </Dialog>
 
       {/* ================= TABEL DATA (VIEW LAYAR) ================= */}
-      <div className="bg-white rounded-lg border shadow overflow-hidden">
-        <div className="p-4 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border p-2 text-center">No</th>
-                <th className="border p-2 text-left">Nama</th>
-                <th className="border p-2 text-left">Pangkat</th>
-                <th className="border p-2 text-right">Jarak (KM)</th>
-                <th className="border p-2 text-center">Waktu / Pace</th>
-                <th className="border p-2 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="p-4 text-center">Loading...</td></tr>
-              ) : filteredRows.length === 0 ? (
-                <tr><td colSpan={6} className="p-4 text-center">Tidak ada data.</td></tr>
-              ) : (
-                filteredRows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="border p-2 text-center">{row.no}</td>
-                    <td className="border p-2">{row.nama}</td>
-                    <td className="border p-2">{row.pangkat}</td>
-                    <td className="border p-2 text-right">{row.jarakKm.toFixed(2)}</td>
-                    <td className="border p-2 text-center">{row.dataAplikasi}</td>
-                    <td className="border p-2 text-center">{row.ket || "Tervalidasi"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {!(filterKesatuan && filterSubdis) ? (
+        <div className="bg-card rounded-xl border border-dashed border-border p-12 text-center">
+          <p className="text-muted-foreground">Silakan pilih Kotama dan Kesatuan untuk menampilkan laporan personil.</p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-lg border shadow overflow-hidden">
+          <div className="p-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border p-2 text-center">No</th>
+                  <th className="border p-2 text-left">Nama</th>
+                  <th className="border p-2 text-left">Pangkat</th>
+                  <th className="border p-2 text-right">Jarak (KM)</th>
+                  <th className="border p-2 text-center">Waktu / Pace</th>
+                  <th className="border p-2 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} className="p-4 text-center">Loading...</td></tr>
+                ) : filteredRows.length === 0 ? (
+                  <tr><td colSpan={6} className="p-4 text-center">Tidak ada data.</td></tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr key={row.id}>
+                      <td className="border p-2 text-center">{row.no}</td>
+                      <td className="border p-2">{row.nama}</td>
+                      <td className="border p-2">{row.pangkat}</td>
+                      <td className="border p-2 text-right">{row.jarakKm.toFixed(2)}</td>
+                      <td className="border p-2 text-center">{row.dataAplikasi}</td>
+                      <td className="border p-2 text-center">{row.ket || "Terpenuhi"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ================= PRINT LAYOUT (HIDDEN) ================= */}
       <div style={{ display: 'none' }}>
@@ -469,7 +498,7 @@ const Laporan = () => {
               </tr>
             </thead>
             <tbody>
-              {/* Grouping Dummy: Militer */}
+              {/* Group A: Militer */}
               <tr>
                 <td className="border border-black p-1 text-center font-bold"></td>
                 <td className="border border-black p-1 text-center font-bold">A</td>
@@ -477,14 +506,12 @@ const Laporan = () => {
               </tr>
 
               {filteredRows.filter(r => {
-                const idStr = String(r.id || "");
-                const pkValue = parseInt(idStr.split('-')[0]) || 0;
-                // Temporarily return true while we decide how to group rows
-                return true;
-              }).map((row) => (
+                const pkVal = parseInt(r.kd_pkt || "0") || 0;
+                return pkVal > 45 || pkVal === 0;
+              }).map((row, idx) => (
                 <tr key={row.id}>
-                  <td className="border border-black p-1 text-center">{row.no}</td>
-                  <td className="border border-black p-1 text-center">{row.no}</td> {/* Dummy BAG */}
+                  <td className="border border-black p-1 text-center">{idx + 1}</td>
+                  <td className="border border-black p-1 text-center">A</td>
                   <td className="border border-black p-1">{row.nama}</td>
                   <td className="border border-black p-1 text-center">{row.pangkat}</td>
                   <td className="border border-black p-1 text-center">{row.nrp}</td>
@@ -493,7 +520,33 @@ const Laporan = () => {
                   <td className="border border-black p-1 text-center"></td>
                   <td className="border border-black p-1 text-center">{(row.jarakKm * 1000).toLocaleString('id-ID')}</td>
                   <td className="border border-black p-1 text-center">{row.dataAplikasi}</td>
-                  <td className="border border-black p-1 text-center">{row.ket}</td>
+                  <td className="border border-black p-1 text-center">{row.ket || "Terpenuhi"}</td>
+                </tr>
+              ))}
+
+              {/* Group B: ASN */}
+              <tr>
+                <td className="border border-black p-1 text-center font-bold"></td>
+                <td className="border border-black p-1 text-center font-bold">B</td>
+                <td colSpan={9} className="border border-black p-1 font-bold">ASN (Target 10 KM)</td>
+              </tr>
+
+              {filteredRows.filter(r => {
+                const pkVal = parseInt(r.kd_pkt || "0") || 0;
+                return pkVal > 0 && pkVal <= 45;
+              }).map((row, idx) => (
+                <tr key={row.id}>
+                  <td className="border border-black p-1 text-center">{idx + 1}</td>
+                  <td className="border border-black p-1 text-center">B</td>
+                  <td className="border border-black p-1">{row.nama}</td>
+                  <td className="border border-black p-1 text-center">{row.pangkat}</td>
+                  <td className="border border-black p-1 text-center">{row.nrp}</td>
+                  <td className="border border-black p-1">{row.jabatan}</td>
+                  <td className="border border-black p-1 text-center">{row.umur}</td>
+                  <td className="border border-black p-1 text-center"></td>
+                  <td className="border border-black p-1 text-center">{(row.jarakKm * 1000).toLocaleString('id-ID')}</td>
+                  <td className="border border-black p-1 text-center">{row.dataAplikasi}</td>
+                  <td className="border border-black p-1 text-center">{row.ket || "Terpenuhi"}</td>
                 </tr>
               ))}
             </tbody>

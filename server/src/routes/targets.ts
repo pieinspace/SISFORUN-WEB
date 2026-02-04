@@ -190,25 +190,88 @@ router.get("/daily-achievement", async (_req, res) => {
 });
 
 /**
- * POST /api/targets/14km/validate/:id
- * Toggles or sets validation_status to 'validated'
+ * GET /api/targets/report
+ * Returns all users in a unit with their best session in the last 7 days
  */
-router.post("/14km/validate/:id", async (req, res) => {
-  const { id } = req.params;
+router.get("/report", authenticateToken, async (req, res) => {
   try {
-    // Validasi run_session instead of target_14km
-    const result = await pool.query(
-      "UPDATE run_sessions SET validation_status = 'validated' WHERE id = $1 RETURNING *",
-      [id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Target record not found" });
+    const { kd_ktm, kd_smkl } = req.query;
+    if (!kd_ktm || !kd_smkl) {
+      return res.status(400).json({ message: "kd_ktm and kd_smkl are required" });
     }
 
-    res.json({ data: result.rows[0] });
+    const result = await pool.query(`
+      WITH BestSessions AS (
+        SELECT DISTINCT ON (user_id)
+          user_id,
+          id AS session_id,
+          distance_km,
+          duration_sec,
+          date_created,
+          validation_status
+        FROM run_sessions
+        WHERE date_created >= NOW() - INTERVAL '7 days'
+        ORDER BY user_id, distance_km DESC, date_created DESC
+      )
+      SELECT
+        u.id,
+        u.name,
+        u.pangkat AS rank,
+        u.kd_ktm,
+        u.kd_smkl,
+        u.kd_corps,
+        u.kd_pkt,
+        k.ur_ktm AS kesatuan_name,
+        s.ur_smkl AS subdis_name,
+        c.init_corps AS corps_name,
+        p.ur_pkt AS pangkat_name,
+        bs.session_id,
+        bs.distance_km,
+        bs.duration_sec,
+        bs.date_created AS achieved_date,
+        bs.validation_status
+      FROM users u
+      LEFT JOIN BestSessions bs ON bs.user_id = u.id
+      LEFT JOIN kotama k ON u.kd_ktm = k.kd_ktm
+      LEFT JOIN kesatuan s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
+      LEFT JOIN corps c ON u.kd_corps = c.kd_corps
+      LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
+      WHERE u.kd_ktm = $1 AND u.kd_smkl = $2 AND u.role != 'admin'
+      ORDER BY 
+        CASE 
+          WHEN u.kd_pkt IS NOT NULL THEN CAST(u.kd_pkt AS INTEGER)
+          ELSE 0
+        END DESC,
+        u.name ASC
+    `, [kd_ktm, kd_smkl]);
+
+    const data = result.rows.map((row) => {
+      const duration = row.duration_sec || 0;
+      const hours = Math.floor(duration / 3600);
+      const minutes = Math.floor((duration % 3600) / 60);
+      const seconds = duration % 60;
+      const time_taken = duration > 0 ? `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}` : "-";
+
+      const distance = parseFloat(row.distance_km) || 0;
+      let pace = "-";
+      if (distance > 0 && duration > 0) {
+        const paceVal = duration / 60 / distance;
+        const paceMin = Math.floor(paceVal);
+        const paceSec = Math.round((paceVal - paceMin) * 60);
+        pace = `${paceMin}'${paceSec.toString().padStart(2, "0")}"/km`;
+      }
+
+      return {
+        ...row,
+        time_taken,
+        pace,
+        distance_km: distance
+      };
+    });
+
+    res.json({ data });
   } catch (err) {
-    console.error("POST /api/targets/14km/validate/:id error:", err);
+    console.error("GET /api/targets/report error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });

@@ -58,6 +58,7 @@ interface TargetRunner {
   kd_smkl?: string;
   kd_corps?: string;
   corps?: string;
+  kd_pkt?: string;
 }
 
 type ApiTargetRow = {
@@ -232,10 +233,11 @@ const Target14KM = () => {
           kd_smkl: r.kd_smkl,
           kd_corps: r.kd_corps,
           corps: (() => {
-            const pk = parseInt(r.kd_pkt || "0");
-            const isAsnOrGeneral = (pk >= 21 && pk <= 45) || (pk >= 91 && pk <= 94);
+            const pkVal = parseInt(r.kd_pkt || "0");
+            const isAsnOrGeneral = (pkVal >= 21 && pkVal <= 45) || (pkVal >= 91 && pkVal <= 94);
             return isAsnOrGeneral ? "-" : (r.corps_name || "-");
           })(),
+          kd_pkt: r.kd_pkt,
         }));
 
         if (!cancelled) setTargetRunners(mapped);
@@ -286,6 +288,10 @@ const Target14KM = () => {
       const matchesSubdis = !filterSubdis || runner.kd_smkl === filterSubdis;
 
       return matchesSearch && matchesStatus && matchesDate && matchesKesatuan && matchesSubdis;
+    }).sort((a, b) => {
+      const pkA = parseInt(a.kd_pkt || "0");
+      const pkB = parseInt(b.kd_pkt || "0");
+      return pkB - pkA; // Rank tinggi di atas
     });
   }, [targetRunners, searchQuery, statusFilter, dateFilter, filterKesatuan, filterSubdis]);
 
