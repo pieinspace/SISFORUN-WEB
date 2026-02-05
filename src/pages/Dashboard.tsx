@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { Users, Target, Activity } from "lucide-react";
-import StatCard from "@/components/dashboard/StatCard";
 import RecentRunnersTable from "@/components/dashboard/RecentRunnersTable";
+import StatCard from "@/components/dashboard/StatCard";
 import TargetChart from "@/components/dashboard/TargetChart";
+import { Activity, Target, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||

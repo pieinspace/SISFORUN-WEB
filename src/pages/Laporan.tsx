@@ -78,9 +78,6 @@ type MasterSubdis = {
   ur_smkl: string;
 };
 
-
-// Data dummy dihapus, akan fetch dari API
-
 const Laporan = () => {
   const [filterKesatuan, setFilterKesatuan] = useState("");
   const [filterSubdis, setFilterSubdis] = useState("");
@@ -237,8 +234,8 @@ const Laporan = () => {
       margin: [0.2, 0.2, 0.2, 0.2] as [number, number, number, number],
       filename: `laporan-binsik-mingguan.pdf`,
       image: { type: "jpeg" as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: "in", format: "a4", orientation: "landscape" as const },
+      html2canvas: { scale: 3, useCORS: true, scrollY: 0 },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" as const },
       pagebreak: { mode: ["avoid-all", "css", "legacy"] },
     };
 
@@ -453,7 +450,7 @@ const Laporan = () => {
 
       {/* ================= PRINT LAYOUT (HIDDEN) ================= */}
       <div style={{ display: 'none' }}>
-        <div id="report-print" className="p-8 bg-white text-black text-[10px] leading-tight font-sans w-[11.69in]">
+        <div id="report-print" className="p-8 bg-white text-black text-[8px] leading-tight font-sans w-[7.9in]">
           {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div className="text-left font-bold top-0">
@@ -483,16 +480,15 @@ const Laporan = () => {
                 <th rowSpan={2} className="border border-black p-1">NRP/NIP</th>
                 <th rowSpan={2} className="border border-black p-1">JABATAN</th>
                 <th rowSpan={2} className="border border-black p-1 w-12">UMUR<br />(THN)</th>
-                <th colSpan={2} className="border border-black p-1">LARI / JALAN</th>
+                <th rowSpan={2} className="border border-black p-1 text-center">JARAK TEMPUH<br />(METER)</th>
                 <th rowSpan={2} className="border border-black p-1">DATA APLIKASI</th>
                 <th rowSpan={2} className="border border-black p-1">KET</th>
               </tr>
               <tr className="text-center font-bold">
-                <th className="border border-black p-1">LARI/<br />JALAN</th>
-                <th className="border border-black p-1">JARAK TEMPUH<br />(METER)</th>
+                {/* rowSpan handles the sub-header row */}
               </tr>
               <tr className="text-center text-[9px] bg-gray-100">
-                {Array.from({ length: 11 }).map((_, i) => (
+                {Array.from({ length: 10 }).map((_, i) => (
                   <th key={i} className="border border-black p-1">{i + 1}</th>
                 ))}
               </tr>
@@ -502,7 +498,7 @@ const Laporan = () => {
               <tr>
                 <td className="border border-black p-1 text-center font-bold"></td>
                 <td className="border border-black p-1 text-center font-bold">A</td>
-                <td colSpan={9} className="border border-black p-1 font-bold">MILITER (Target 14 KM)</td>
+                <td colSpan={8} className="border border-black p-1 font-bold">MILITER (Target 14 KM)</td>
               </tr>
 
               {filteredRows.filter(r => {
@@ -528,7 +524,7 @@ const Laporan = () => {
               <tr>
                 <td className="border border-black p-1 text-center font-bold"></td>
                 <td className="border border-black p-1 text-center font-bold">B</td>
-                <td colSpan={9} className="border border-black p-1 font-bold">ASN (Target 10 KM)</td>
+                <td colSpan={8} className="border border-black p-1 font-bold">ASN (Target 10 KM)</td>
               </tr>
 
               {filteredRows.filter(r => {
