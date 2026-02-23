@@ -103,6 +103,7 @@ const Pengaturan = () => {
   }, []);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [openKesatuanAdd, setOpenKesatuanAdd] = useState(false);
   const [newAdmin, setNewAdmin] = useState({
     username: "",
     password: "",
@@ -399,19 +400,48 @@ const Pengaturan = () => {
                   {newAdmin.role === "Admin Satuan" && newAdmin.kd_ktm && (
                     <div className="grid gap-2">
                       <Label>Kesatuan</Label>
-                      <Select
-                        value={newAdmin.kd_smkl}
-                        onValueChange={(val) => setNewAdmin({ ...newAdmin, kd_smkl: val })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih Kesatuan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {masterKesatuan.map((s) => (
-                            <SelectItem key={s.kd_smkl} value={s.kd_smkl}>{s.ur_smkl}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={openKesatuanAdd} onOpenChange={setOpenKesatuanAdd}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between font-normal"
+                          >
+                            {masterKesatuan.find((s) => s.kd_smkl === newAdmin.kd_smkl)?.ur_smkl || "Pilih Kesatuan"}
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[400px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Cari kesatuan..." />
+                            <CommandList>
+                              <CommandEmpty>Kesatuan tidak ditemukan.</CommandEmpty>
+                              <CommandGroup>
+                                {masterKesatuan.map((s) => (
+                                  <CommandItem
+                                    key={s.kd_smkl}
+                                    value={s.ur_smkl}
+                                    onSelect={() => {
+                                      setNewAdmin({ ...newAdmin, kd_smkl: s.kd_smkl });
+                                      setOpenKesatuanAdd(false);
+                                    }}
+                                  >
+                                    <div className="flex items-center">
+                                      <CheckCircle2
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          newAdmin.kd_smkl === s.kd_smkl ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      {s.ur_smkl}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   )}
                 </div>

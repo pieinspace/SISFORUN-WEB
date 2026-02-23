@@ -216,6 +216,7 @@ router.get("/report", authenticateToken, async (req, res) => {
       SELECT
         u.id,
         u.name,
+        u.nrp,
         u.pangkat AS rank,
         u.kd_ktm,
         u.kd_smkl,

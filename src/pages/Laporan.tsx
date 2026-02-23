@@ -46,6 +46,7 @@ type ApiTarget14 = {
   subdis_name?: string;
   pangkat_name?: string;
   kd_pkt?: string;
+  nrp?: string;
 };
 
 type ReportRow = {
@@ -141,7 +142,7 @@ const Laporan = () => {
           id: x.id,
           nama: x.name,
           pangkat: x.pangkat_name || x.rank,
-          nrp: x.id,
+          nrp: x.nrp || x.id,
           jabatan: "-",
           umur: "-",
           lariJalan: "",
@@ -268,11 +269,11 @@ const Laporan = () => {
     const ws = XLSX.utils.json_to_sheet(excelData);
 
     const titleRows = [
-      ["DINAS INFORMASI DAN PENGOLAHAN DATA TNI AD"],
-      ["SUBDIS BINSISFOMIN"],
+      [currentKtmName],
+      [currentSmklName],
       [""],
       ["LAPORAN PENCAPAIAN PEMBINAAN FISIK MINGGUAN"],
-      ["SUBDIS BINSISFOMIN DISINFOLAHTAD"],
+      [`${currentSmklName} ${currentKtmName}`],
       [`PERIODE TANGGAL ... S.D. ${new Date().toLocaleDateString("id-ID").toUpperCase()}`],
       [""]
     ];
@@ -280,6 +281,35 @@ const Laporan = () => {
     XLSX.utils.sheet_add_aoa(ws, titleRows, { origin: "A1" });
     XLSX.writeFile(wb, `laporan-binsik-mingguan.xlsx`);
   };
+
+  /* ================== DYNAMIC SIGNATURES ================== */
+  const { kasubdis, sekretaris } = useMemo(() => {
+    // Sort by kd_pkt DESC to get highest rank first
+    const sortedByRank = [...filteredRows].sort((a, b) => {
+      const rankA = parseInt(a.kd_pkt || "0") || 0;
+      const rankB = parseInt(b.kd_pkt || "0") || 0;
+      return rankB - rankA;
+    });
+
+    return {
+      kasubdis: sortedByRank[0] || null,
+      sekretaris: sortedByRank[1] || null
+    };
+  }, [filteredRows]);
+
+  const currentKtmName = useMemo(() => {
+    return masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "KOTAMA";
+  }, [masterKesatuan, filterKesatuan]);
+
+  const currentSmklName = useMemo(() => {
+    return masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "KESATUAN";
+  }, [masterSubdis, filterSubdis]);
+
+  const smklDisplayName = useMemo(() => {
+    // Convert "SUBDIS BINSISFOMIN" to "Kasubdis Binsisfomin" or similar logic if needed
+    // For now, let's keep it simple or just use the name
+    return currentSmklName;
+  }, [currentSmklName]);
 
   return (
     <div className="space-y-6">
@@ -454,18 +484,18 @@ const Laporan = () => {
           {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div className="text-left font-bold top-0">
-              <p>DINAS INFORMASI DAN PENGOLAHAN DATA TNI AD</p>
-              <p className="underline">SUBDIS BINSISFOMIN</p>
+              <p>{currentKtmName}</p>
+              <p className="underline">{currentSmklName}</p>
             </div>
             <div className="text-left w-1/3">
-              <p>Lampiran I (Rekapitulasi hasil pembinaan fisik lari/jalan) Subdis Binsisfomin Disinfolahtad</p>
+              <p>Lampiran I (Rekapitulasi hasil pembinaan fisik lari/jalan) {currentSmklName} {currentKtmName}</p>
               <div className="w-full h-px bg-black mt-1"></div>
             </div>
           </div>
 
           <div className="text-center font-bold mb-4">
             <p>LAPORAN PENCAPAIAN PEMBINAAN FISIK MINGGUAN</p>
-            <p>SUBDIS BINSISFOMIN DISINFOLAHTAD</p>
+            <p>{currentSmklName} {currentKtmName}</p>
             <p className="uppercase">PERIODE TANGGAL ... S.D. {formatDateWIB(new Date()).toUpperCase()}</p>
           </div>
 
@@ -548,22 +578,21 @@ const Laporan = () => {
             </tbody>
           </table>
 
-          {/* Footer / Signatures */}
           <div className="flex justify-between text-center break-inside-avoid">
             <div className="text-left w-1/3">
               <p>Mengetahui</p>
-              <p>a.n. Kepala Disinfolahta TNI AD</p>
+              <p>a.n. Kepala {currentKtmName}</p>
               <p>Sekretaris,</p>
               <br /><br /><br />
-              <p className="font-bold underline">Moch. Zaenal Abidin</p>
-              <p>Kolonel Arh NRP 1920041090570</p>
+              <p className="font-bold underline">{sekretaris?.nama || "-"}</p>
+              <p>{sekretaris?.pangkat || "-"} NRP {sekretaris?.nrp || "-"}</p>
             </div>
             <div className="w-1/3">
-              <p className="text-left mb-4">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formatDateWIB(new Date())} <br /> Kasubdis Binsisfomin,</p>
+              <p className="text-left mb-4">Jakarta, &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {formatDateWIB(new Date())} <br /> {currentSmklName.includes("SUBDIS") ? currentSmklName.replace("SUBDIS", "Kasubdis") : `Dansat ${currentSmklName}`},</p>
               <br /><br /><br /><br />
               <div className="text-left">
-                <p className="font-bold underline">Syaiful Latif, S.Pd., M.M.</p>
-                <p>Kolonel Inf NRP 11970017100171</p>
+                <p className="font-bold underline">{kasubdis?.nama || "-"}</p>
+                <p>{kasubdis?.pangkat || "-"} NRP {kasubdis?.nrp || "-"}</p>
               </div>
             </div>
           </div>
