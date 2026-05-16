@@ -37,7 +37,7 @@ type ApiTarget14 = {
 };
 
 const Dashboard = () => {
-  const [runners, setRunners] = useState<ApiRunner[]>([]);
+  const [totalRunners, setTotalRunners] = useState(0);
   const [targets, setTargets] = useState<ApiTarget14[]>([]);
 
   useEffect(() => {
@@ -50,14 +50,14 @@ const Dashboard = () => {
       window.location.href = "/login";
     };
 
-    // total runners
-    fetch(`${API_BASE}/api/runners`, { headers })
+    // total runners — only need the count, so request minimal data
+    fetch(`${API_BASE}/api/runners?page=1&limit=1`, { headers })
       .then((r) => {
         if (r.status === 401 || r.status === 403) return handleAuthError();
         return r.json();
       })
-      .then((j) => setRunners(Array.isArray(j?.data) ? j.data : []))
-      .catch(() => setRunners([]));
+      .then((j) => setTotalRunners(j?.meta?.total ?? 0))
+      .catch(() => setTotalRunners(0));
 
     // target 14km
     fetch(`${API_BASE}/api/targets/14km`, { headers })
@@ -68,8 +68,6 @@ const Dashboard = () => {
       .then((j) => setTargets(Array.isArray(j?.data) ? j.data : []))
       .catch(() => setTargets([]));
   }, []);
-
-  const totalRunners = runners.length;
 
   const totalTarget = targets.length;
   const validatedCount = targets.filter((t) => t.validation_status === "validated").length;
@@ -100,13 +98,13 @@ const Dashboard = () => {
       {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
-        <p className="page-description">Ringkasan aktivitas dan pencapaian pelari</p>
+        <p className="page-description">Ringkasan aktivitas dan pencapaian personel</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          title="Total Pelari"
+          title="Total Personel"
           value={String(totalRunners)}
           subtitle="Terdaftar di sistem"
           icon={Users}

@@ -156,7 +156,7 @@ const Profil = () => {
           <div className="grid gap-6 md:grid-cols-3">
             <div className="text-center p-6 rounded-2xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/[0.05] transition-all group">
               <div className="text-3xl font-black text-primary mb-1 group-hover:scale-110 transition-transform">{stats.totalRunners}</div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Pelari Dikelola</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Personel Dikelola</p>
             </div>
             <div className="text-center p-6 rounded-2xl bg-primary/[0.03] border border-primary/5 hover:bg-primary/[0.05] transition-all group">
               <div className="text-3xl font-black text-primary mb-1 group-hover:scale-110 transition-transform">{stats.totalReports}</div>

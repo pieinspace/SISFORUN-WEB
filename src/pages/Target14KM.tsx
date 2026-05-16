@@ -311,7 +311,7 @@ const Target14KM = () => {
           <div>
             <h1 className="page-title">Monitoring Target</h1>
             <p className="page-description">
-              Daftar pelari yang telah mencapai target (Militer 14 KM, ASN 10 KM)
+              Daftar personel yang telah mencapai target (Militer 14 KM, ASN 10 KM)
             </p>
           </div>
         </div>
@@ -352,7 +352,7 @@ const Target14KM = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Cari nama pelari..."
+                placeholder="Cari nama personel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"

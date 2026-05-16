@@ -11,7 +11,7 @@ const router = Router();
 router.get("/14km", authenticateToken, async (req, res) => {
   try {
     const user = req.user;
-    let whereClause = "WHERE ((u.kd_pkt <= '45' AND rs.distance_km >= 10) OR (u.kd_pkt > '45' AND rs.distance_km >= 14))";
+    let whereClause = "WHERE rs.date_created >= NOW() - INTERVAL '7 days' AND ((u.kd_pkt <= '45' AND rs.distance_km >= 10) OR (u.kd_pkt > '45' AND rs.distance_km >= 14))";
     const params: any[] = [];
 
     if (user?.role === 'admin_kotama' && user.kd_ktm) {

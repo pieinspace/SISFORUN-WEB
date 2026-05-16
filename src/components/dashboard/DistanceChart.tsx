@@ -53,7 +53,7 @@ const DistanceChart = () => {
       <div className="mb-4">
         <h3 className="font-semibold text-foreground">Total Jarak Lari</h3>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Akumulasi jarak seluruh pelari per minggu (km)
+          Akumulasi jarak seluruh personel per minggu (km)
         </p>
       </div>
       <div className="h-[280px]">

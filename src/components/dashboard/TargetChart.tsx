@@ -51,7 +51,7 @@ const TargetChart = () => {
       <div className="mb-4">
         <h3 className="font-semibold text-foreground">Pencapaian Target Mingguan</h3>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Jumlah pelari yang mencapai target 14 KM (7 hari terakhir)
+          Jumlah personel yang mencapai target 14 KM (7 hari terakhir)
         </p>
       </div>
       <div className="h-[280px]">

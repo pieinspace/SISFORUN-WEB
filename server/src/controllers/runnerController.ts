@@ -6,19 +6,132 @@ import { authenticateToken } from "../middleware/authMiddleware";
 export const getRunners = async (req: Request, res: Response) => {
   try {
     const user = req.user;
-    let whereClause = "WHERE u.role != 'admin'";
+
+    // --- Query parameters for server-side pagination, search & filtering ---
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const offset = (page - 1) * limit;
+    const search = (req.query.search as string || "").trim();
+    const filterKtm = (req.query.kd_ktm as string || "").trim();
+    const filterSmkl = (req.query.kd_smkl as string || "").trim();
+    const filterStatus = (req.query.status as string || "").trim(); // "Tercapai" | "Dalam Proses" | "Belum Mulai"
+
+    // --- Build dynamic WHERE clause ---
+    const conditions: string[] = ["u.role != 'admin'"];
     const params: any[] = [];
 
+    // Role-based scope restrictions (overrides filter params)
     if (user?.role === 'admin_kotama' && user.kd_ktm) {
-      whereClause += ` AND u.kd_ktm = $${params.length + 1}`;
       params.push(user.kd_ktm);
+      conditions.push(`u.kd_ktm = $${params.length}`);
     } else if (user?.role === 'admin_satuan' && user.kd_ktm && user.kd_smkl) {
-      whereClause += ` AND u.kd_ktm = $${params.length + 1} AND u.kd_smkl = $${params.length + 2}`;
       params.push(user.kd_ktm);
+      conditions.push(`u.kd_ktm = $${params.length}`);
       params.push(user.kd_smkl);
+      conditions.push(`u.kd_smkl = $${params.length}`);
+    } else {
+      // Superadmin — respect optional filter params from frontend
+      if (filterKtm) {
+        params.push(filterKtm);
+        conditions.push(`u.kd_ktm = $${params.length}`);
+      }
+      if (filterSmkl) {
+        params.push(filterSmkl);
+        conditions.push(`u.kd_smkl = $${params.length}`);
+      }
     }
 
-    const result = await pool.query(`
+    // Search by name (case-insensitive)
+    if (search) {
+      params.push(`%${search}%`);
+      conditions.push(`u.name ILIKE $${params.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
+
+    // --- CTE: pre-aggregate run_sessions to avoid Cartesian explosion ---
+    // --- Also compute target status server-side ---
+    const cteQuery = `
+      WITH user_stats AS (
+        SELECT
+          user_id,
+          COALESCE(SUM(distance_km), 0) AS total_distance,
+          COUNT(id) AS total_sessions
+        FROM run_sessions
+        WHERE date_created >= NOW() - INTERVAL '7 days'
+        GROUP BY user_id
+      ),
+      user_best AS (
+        SELECT DISTINCT ON (user_id)
+          user_id,
+          distance_km AS best_distance,
+          validation_status AS best_validation
+        FROM run_sessions
+        WHERE date_created >= NOW() - INTERVAL '7 days'
+        ORDER BY user_id, distance_km DESC
+      )
+    `;
+
+    // --- Count total matching rows (for pagination meta) ---
+    const countQuery = `
+      ${cteQuery}
+      SELECT COUNT(*) AS total
+      FROM users u
+      LEFT JOIN user_stats us ON us.user_id = u.id
+      LEFT JOIN user_best ub ON ub.user_id = u.id
+      ${whereClause}
+      ${filterStatus ? `AND (
+        CASE
+          WHEN ub.best_distance IS NOT NULL AND (
+            (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) <= 45 AND ub.best_distance >= 10)
+            OR (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) > 45 AND ub.best_distance >= 14)
+          ) AND ub.best_validation = 'validated' THEN 'Tercapai'
+          WHEN COALESCE(us.total_distance, 0) > 0 THEN 'Dalam Proses'
+          ELSE 'Belum Mulai'
+        END
+      ) = $${params.length + 1}` : ""}
+    `;
+
+    const countParams = filterStatus ? [...params, filterStatus] : [...params];
+    const countResult = await pool.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0].total) || 0;
+
+    // --- Main data query with LIMIT/OFFSET ---
+    const statusCase = `
+      CASE
+        WHEN ub.best_distance IS NOT NULL AND (
+          (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) <= 45 AND ub.best_distance >= 10)
+          OR (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) > 45 AND ub.best_distance >= 14)
+        ) AND ub.best_validation = 'validated' THEN 'Tercapai'
+        WHEN COALESCE(us.total_distance, 0) > 0 THEN 'Dalam Proses'
+        ELSE 'Belum Mulai'
+      END AS "statusTarget"
+    `;
+
+    // Build the status filter for the main query too
+    let statusFilter = "";
+    const mainParams = [...params];
+    if (filterStatus) {
+      mainParams.push(filterStatus);
+      statusFilter = `AND (
+        CASE
+          WHEN ub.best_distance IS NOT NULL AND (
+            (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) <= 45 AND ub.best_distance >= 10)
+            OR (CAST(COALESCE(u.kd_pkt, '0') AS INTEGER) > 45 AND ub.best_distance >= 14)
+          ) AND ub.best_validation = 'validated' THEN 'Tercapai'
+          WHEN COALESCE(us.total_distance, 0) > 0 THEN 'Dalam Proses'
+          ELSE 'Belum Mulai'
+        END
+      ) = $${mainParams.length}`;
+    }
+
+    mainParams.push(limit);
+    const limitParam = `$${mainParams.length}`;
+    mainParams.push(offset);
+    const offsetParam = `$${mainParams.length}`;
+
+    const dataQuery = `
+      ${cteQuery}
       SELECT
         u.id,
         u.name,
@@ -33,28 +146,40 @@ export const getRunners = async (req: Request, res: Response) => {
         s.ur_smkl AS subdis_name,
         c.init_corps AS corps_name,
         p.ur_pkt AS pangkat_name,
-        COALESCE(SUM(rs.distance_km), 0) AS "totalDistance",
-        COUNT(rs.id) AS "totalSessions"
+        COALESCE(us.total_distance, 0) AS "totalDistance",
+        COALESCE(us.total_sessions, 0) AS "totalSessions",
+        ${statusCase}
       FROM users u
-      LEFT JOIN run_sessions rs ON rs.user_id = u.id
+      LEFT JOIN user_stats us ON us.user_id = u.id
+      LEFT JOIN user_best ub ON ub.user_id = u.id
       LEFT JOIN kotama k ON u.kd_ktm = k.kd_ktm
       LEFT JOIN kesatuan s ON u.kd_ktm = s.kd_ktm AND u.kd_smkl = s.kd_smkl
       LEFT JOIN corps c ON u.kd_corps = c.kd_corps
       LEFT JOIN pangkat p ON u.kd_pkt = p.kd_pkt
       ${whereClause}
-      GROUP BY 
-        u.id, u.name, u.pangkat, u.role, u.created_at, 
-        u.kd_ktm, u.kd_smkl, u.kd_corps, u.kd_pkt,
-        k.ur_ktm, s.ur_smkl, c.init_corps, p.ur_pkt
-      ORDER BY 
-        CASE 
+      ${statusFilter}
+      ORDER BY
+        CASE
           WHEN u.kd_pkt IS NOT NULL THEN CAST(u.kd_pkt AS INTEGER)
           ELSE 0
         END DESC,
         u.name ASC
-    `, params);
+      LIMIT ${limitParam} OFFSET ${offsetParam}
+    `;
 
-    res.json({ data: result.rows });
+    const result = await pool.query(dataQuery, mainParams);
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      data: result.rows,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "DB error" });

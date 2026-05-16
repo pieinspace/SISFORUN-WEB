@@ -30,7 +30,7 @@ const RecentRunnersTable = ({ runners }: RecentRunnersTableProps) => {
           <div>
             <h3 className="font-semibold text-foreground">Monitoring Target Tercapai</h3>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Pelari yang baru mencapai target
+              Personel yang baru mencapai target
             </p>
           </div>
           <Link to="/target">

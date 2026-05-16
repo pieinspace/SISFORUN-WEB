@@ -23,24 +23,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2, ChevronDown, Clock, Eye, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
   "http://localhost:4001";
 
+// --- Helper: authenticated fetch with auto-redirect on 401/403 ---
+const authFetch = async (url: string) => {
+  const token = localStorage.getItem("admin_token");
+  const res = await fetch(url, {
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+
+  return res.json();
+};
+
+// --- Types ---
 interface ApiRunner {
   id: string;
   name: string;
   rank: string | null;
-  kesatuan?: string;
-  totalDistance?: number;
-  total_distance?: number;
-  totalSessions?: number;
-  total_sessions?: number;
-  created_at?: string;
   createdAt?: string;
   kd_ktm?: string;
   kd_smkl?: string;
@@ -50,22 +63,18 @@ interface ApiRunner {
   kesatuan_name?: string;
   subdis_name?: string;
   corps_name?: string;
-}
-
-interface ApiTarget14 {
-  id: string;
-  distance_km: number;
-  validation_status: "validated" | "pending";
+  totalDistance?: number;
+  totalSessions?: number;
+  statusTarget?: string;
 }
 
 interface Pelari {
   id: string;
   pangkat: string;
   nama: string;
-  email: string;
   kesatuan: string;
   subdis: string;
-  corps: string; // Add this
+  corps: string;
   totalSesi: number;
   totalJarak: number;
   statusTarget: string;
@@ -87,44 +96,21 @@ const formatDateID = (isoString: string) => {
   }).format(d);
 };
 
-const makeEmail = (name: string, rank: string) => {
-  const rankLower = (rank || "").toLowerCase().replace(/[^a-z]/g, "");
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .map((p) => p.replace(/[^A-Za-z]/g, ""))
-    .filter(Boolean);
-
-  if (!parts.length) return "-";
-
-  const firstWord = (parts[0] || "").toLowerCase();
-  const secondWord = (parts[1] || "").toLowerCase();
-
-  const firstName =
-    rankLower && firstWord === rankLower && secondWord ? secondWord : firstWord;
-
-  if (!rankLower || !firstName) return "-";
-  return `${rankLower}.${firstName}@tni.mil.id`;
-};
-
 const DataPelari = () => {
-  const [loading, setLoading] = useState(true);
-  const [pelariData, setPelariData] = useState<Pelari[]>([]);
-
-  // Master Data State
-  const [masterKesatuan, setMasterKesatuan] = useState<{ kd_ktm: string; ur_ktm: string }[]>([]);
-  const [masterSubdis, setMasterSubdis] = useState<{ kd_ktm: string; kd_smkl: string; ur_smkl: string }[]>([]);
-  const [masterCorps, setMasterCorps] = useState<{ kd_corps: string; init_corps: string; ur_corps: string }[]>([]);
-  const [masterPangkat, setMasterPangkat] = useState<{ kd_pkt: string; ur_pkt: string }[]>([]);
-
+  // --- Filter states ---
   const [searchNama, setSearchNama] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterKesatuan, setFilterKesatuan] = useState('');
   const [filterSubdis, setFilterSubdis] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [openKesatuan, setOpenKesatuan] = useState(false);
   const [openSubdis, setOpenSubdis] = useState(false);
 
-  // User Role & Scope
+  // --- Pagination state ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  // --- User Role & Scope ---
   const [currentUser, setCurrentUser] = useState<any>(null);
   useEffect(() => {
     const userStr = localStorage.getItem("admin_user");
@@ -149,180 +135,116 @@ const DataPelari = () => {
   const isAdminKotama = currentUser?.role === 'admin_kotama';
   const isAdminSatuan = currentUser?.role === 'admin_satuan';
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
-
-  // Fetch Master Data on Mount
+  // --- Debounce search input (300ms) to avoid excessive API calls ---
   useEffect(() => {
-    const fetchMasterData = async () => {
-      const token = localStorage.getItem("admin_token");
-      const headers = { "Authorization": `Bearer ${token}` };
-      try {
-        const [ktmRes, corpsRes, pktRes] = await Promise.all([
-          fetch(`${API_BASE}/api/master/kesatuan`, { headers }),
-          fetch(`${API_BASE}/api/master/corps`, { headers }),
-          fetch(`${API_BASE}/api/master/pangkat`, { headers })
-        ]);
-
-        const [ktmJson, corpsJson, pktJson] = await Promise.all([
-          ktmRes.json(),
-          corpsRes.json(),
-          pktRes.json()
-        ]);
-
-        if (ktmJson.success) setMasterKesatuan(ktmJson.data);
-        if (corpsJson.success) setMasterCorps(corpsJson.data);
-        if (pktJson.success) setMasterPangkat(pktJson.data);
-      } catch (error) {
-        console.error("Failed to fetch master data:", error);
-      }
-    };
-    fetchMasterData();
-  }, []);
-
-  // Fetch Subdis when filterKesatuan changes
-  useEffect(() => {
-    const fetchSubdis = async () => {
-      if (!filterKesatuan) {
-        setMasterSubdis([]);
-        setFilterSubdis("");
-        return;
-      }
-
-      try {
-        const token = localStorage.getItem("admin_token");
-        const headers = { "Authorization": `Bearer ${token}` };
-        const res = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`, { headers });
-
-        if (res.status === 401 || res.status === 403) {
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
-          window.location.href = "/login";
-          return;
-        }
-
-        const data = await res.json();
-        if (data.success) {
-          setMasterSubdis(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch subdis:", error);
-      }
-    };
-
-    fetchSubdis();
-  }, [filterKesatuan]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch Runners
-        const token = localStorage.getItem("admin_token");
-        const headers = { "Authorization": `Bearer ${token}` };
-
-        const runnersRes = await fetch(`${API_BASE}/api/runners`, { headers });
-
-        if (runnersRes.status === 401 || runnersRes.status === 403) {
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
-          window.location.href = "/login";
-          return;
-        }
-
-        const runnersJson = await runnersRes.json();
-        const runners: ApiRunner[] = Array.isArray(runnersJson?.data) ? runnersJson.data : [];
-
-        // Fetch Targets
-        const targetsRes = await fetch(`${API_BASE}/api/targets/14km`, { headers });
-        const targetsJson = await targetsRes.json();
-        const targets: ApiTarget14[] = Array.isArray(targetsJson?.data) ? targetsJson.data : [];
-
-        // Map data
-        const mappedData: Pelari[] = runners.map((r) => {
-          const target = targets.find(t => t.id === r.id);
-
-          let statusTarget = "Belum Mulai";
-          if (target) {
-            const pk = parseInt(r.kd_pkt || "0");
-            const targetGoal = pk <= 45 ? 10 : 14;
-            if (target.distance_km >= targetGoal && target.validation_status === "validated") {
-              statusTarget = "Tercapai";
-            } else {
-              statusTarget = "Dalam Proses";
-            }
-          } else {
-            const pk = parseInt(r.kd_pkt || "0");
-            const targetGoal = pk <= 45 ? 10 : 14;
-            const dist = Number(r.totalDistance ?? r.total_distance ?? 0);
-            if (dist > 0) statusTarget = "Dalam Proses";
-            if (dist >= targetGoal) statusTarget = "Tercapai";
-          }
-
-          const rank = r.pangkat_name || r.rank || "-";
-          const kesatuanLabel = r.kesatuan_name || r.kesatuan || "-";
-
-          // Hide corps for ASN (21-45) and Generals (91-94)
-          const pk = parseInt(r.kd_pkt || "0");
-          const isAsnOrGeneral = (pk >= 21 && pk <= 45) || (pk >= 91 && pk <= 94);
-          const corpsLabel = isAsnOrGeneral ? "-" : (r.corps_name || "-");
-
-          const subdisLabel = r.subdis_name || "-";
-
-          return {
-            id: r.id,
-            pangkat: rank,
-            nama: r.name,
-            email: makeEmail(r.name, rank),
-            kesatuan: kesatuanLabel,
-            subdis: subdisLabel,
-            corps: corpsLabel,
-            totalSesi: Number(r.totalSessions ?? r.total_sessions ?? 0),
-            totalJarak: Number(r.totalDistance ?? r.total_distance ?? 0),
-            statusTarget: statusTarget,
-            bergabung: formatDateID(r.createdAt ?? r.created_at ?? ""),
-            kd_ktm: r.kd_ktm,
-            kd_smkl: r.kd_smkl,
-            kd_corps: r.kd_corps,
-            kd_pkt: r.kd_pkt,
-          };
-        });
-
-        setPelariData(mappedData);
-
-      } catch (err) {
-        console.error("Failed to fetch data in DataPelari:", err);
-        toast.error("Gagal mengambil data pelari. Silakan cek koneksi atau login ulang.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [masterKesatuan, masterCorps, masterSubdis]); // Add master data as dependencies to re-run mapping if they load later
-
-  // Filter data
-  const filteredData = useMemo(() => {
-    return pelariData.filter(pelari => {
-      const matchNama = pelari.nama.toLowerCase().includes(searchNama.toLowerCase());
-      const matchKesatuan = !filterKesatuan || pelari.kd_ktm === filterKesatuan;
-      const matchSubdis = !filterSubdis || pelari.kd_smkl === filterSubdis;
-      const matchStatus = filterStatus === 'all' || !filterStatus || pelari.statusTarget === filterStatus;
-      return matchNama && matchKesatuan && matchSubdis && matchStatus;
-    });
-  }, [pelariData, searchNama, filterKesatuan, filterSubdis, filterStatus]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchNama);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchNama]);
 
   // Reset page when filters change
-  useEffect(() => {
+  const handleFilterChange = useCallback((setter: (val: string) => void, value: string) => {
+    setter(value);
     setCurrentPage(1);
-  }, [searchNama, filterKesatuan, filterSubdis, filterStatus]);
+  }, []);
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, endIndex);
+  // ==================== REACT QUERY: Master Data ====================
+  const { data: masterKesatuan = [] } = useQuery({
+    queryKey: ['master', 'kesatuan'],
+    queryFn: async () => {
+      const json = await authFetch(`${API_BASE}/api/master/kesatuan`);
+      return json.success ? json.data : [];
+    },
+    staleTime: 5 * 60 * 1000, // Cache master data for 5 minutes
+  });
+
+  const { data: masterSubdis = [] } = useQuery({
+    queryKey: ['master', 'subdis', filterKesatuan],
+    queryFn: async () => {
+      if (!filterKesatuan) return [];
+      const json = await authFetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`);
+      return json.success ? json.data : [];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!filterKesatuan,
+  });
+
+  // Reset subdis filter when kesatuan changes
+  useEffect(() => {
+    if (!filterKesatuan) {
+      setFilterSubdis("");
+    }
+  }, [filterKesatuan]);
+
+  // ==================== REACT QUERY: Runners (Server-Side Paginated) ====================
+  const buildRunnersUrl = () => {
+    const params = new URLSearchParams();
+    params.set("page", String(currentPage));
+    params.set("limit", String(itemsPerPage));
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (filterKesatuan) params.set("kd_ktm", filterKesatuan);
+    if (filterSubdis) params.set("kd_smkl", filterSubdis);
+    if (filterStatus && filterStatus !== "all") params.set("status", filterStatus);
+    return `${API_BASE}/api/runners?${params.toString()}`;
+  };
+
+  const {
+    data: runnersResponse,
+    isLoading: loading,
+    isError,
+  } = useQuery({
+    queryKey: ['runners', currentPage, debouncedSearch, filterKesatuan, filterSubdis, filterStatus],
+    queryFn: async () => {
+      const json = await authFetch(buildRunnersUrl());
+      return json;
+    },
+    placeholderData: keepPreviousData, // Show previous data while fetching new page
+  });
+
+  // Show error toast
+  useEffect(() => {
+    if (isError) {
+      toast.error("Gagal mengambil data personel. Silakan cek koneksi atau login ulang.");
+    }
+  }, [isError]);
+
+  // --- Transform API response to display data ---
+  const runners: ApiRunner[] = runnersResponse?.data ?? [];
+  const meta = runnersResponse?.meta ?? { total: 0, page: 1, totalPages: 0, limit: itemsPerPage };
+
+  const paginatedData: Pelari[] = runners.map((r: ApiRunner) => {
+    const rank = r.pangkat_name || r.rank || "-";
+    const kesatuanLabel = r.kesatuan_name || "-";
+
+    // Hide corps for ASN (21-45) and Generals (91-94)
+    const pk = parseInt(r.kd_pkt || "0");
+    const isAsnOrGeneral = (pk >= 21 && pk <= 45) || (pk >= 91 && pk <= 94);
+    const corpsLabel = isAsnOrGeneral ? "-" : (r.corps_name || "-");
+
+    return {
+      id: r.id,
+      pangkat: rank,
+      nama: r.name,
+      kesatuan: kesatuanLabel,
+      subdis: r.subdis_name || "-",
+      corps: corpsLabel,
+      totalSesi: Number(r.totalSessions ?? 0),
+      totalJarak: Number(r.totalDistance ?? 0),
+      statusTarget: r.statusTarget || "Belum Mulai",
+      bergabung: formatDateID(r.createdAt ?? ""),
+      kd_ktm: r.kd_ktm,
+      kd_smkl: r.kd_smkl,
+      kd_corps: r.kd_corps,
+      kd_pkt: r.kd_pkt,
+    };
+  });
+
+  // --- Pagination from server meta ---
+  const totalPages = meta.totalPages;
+  const startIndex = (meta.page - 1) * meta.limit;
+  const endIndex = Math.min(startIndex + meta.limit, meta.total);
 
   // Generate page numbers to display
   const getPageNumbers = () => {
@@ -345,8 +267,8 @@ const DataPelari = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="page-header">
-        <h1 className="page-title">Data Pelari</h1>
-        <p className="page-description">Kelola dan pantau seluruh data pelari terdaftar</p>
+        <h1 className="page-title">Data Personel</h1>
+        <p className="page-description">Kelola dan pantau seluruh data personel terdaftar</p>
       </div>
 
       {/* Filters */}
@@ -358,7 +280,7 @@ const DataPelari = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Cari nama pelari..."
+                placeholder="Cari nama personel..."
                 value={searchNama}
                 onChange={(e) => setSearchNama(e.target.value)}
                 className="pl-9"
@@ -378,7 +300,7 @@ const DataPelari = () => {
                     aria-expanded={openKesatuan}
                     className="w-full justify-between font-normal"
                   >
-                    {masterKesatuan.find(k => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
+                    {masterKesatuan.find((k: any) => k.kd_ktm === filterKesatuan)?.ur_ktm || "Semua Kotama"}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -391,18 +313,18 @@ const DataPelari = () => {
                         <CommandItem
                           value=""
                           onSelect={() => {
-                            setFilterKesatuan("");
+                            handleFilterChange(setFilterKesatuan, "");
                             setOpenKesatuan(false);
                           }}
                         >
                           Semua Kotama
                         </CommandItem>
-                        {masterKesatuan.map((k) => (
+                        {masterKesatuan.map((k: any) => (
                           <CommandItem
                             key={k.kd_ktm}
                             value={k.ur_ktm}
                             onSelect={() => {
-                              setFilterKesatuan(k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
+                              handleFilterChange(setFilterKesatuan, k.kd_ktm === filterKesatuan ? "" : k.kd_ktm);
                               setOpenKesatuan(false);
                             }}
                           >
@@ -430,7 +352,7 @@ const DataPelari = () => {
                     className="w-full justify-between font-normal"
                     disabled={!filterKesatuan}
                   >
-                    {masterSubdis.find(s => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
+                    {masterSubdis.find((s: any) => s.kd_smkl === filterSubdis)?.ur_smkl || "Semua Kesatuan"}
                     <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -443,18 +365,18 @@ const DataPelari = () => {
                         <CommandItem
                           value=""
                           onSelect={() => {
-                            setFilterSubdis("");
+                            handleFilterChange(setFilterSubdis, "");
                             setOpenSubdis(false);
                           }}
                         >
                           Semua Kesatuan
                         </CommandItem>
-                        {masterSubdis.map((s) => (
+                        {masterSubdis.map((s: any) => (
                           <CommandItem
                             key={s.kd_smkl}
                             value={s.ur_smkl}
                             onSelect={() => {
-                              setFilterSubdis(s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
+                              handleFilterChange(setFilterSubdis, s.kd_smkl === filterSubdis ? "" : s.kd_smkl);
                               setOpenSubdis(false);
                             }}
                           >
@@ -472,7 +394,7 @@ const DataPelari = () => {
           {/* Filter Status */}
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={(val) => handleFilterChange(setFilterStatus, val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -558,7 +480,7 @@ const DataPelari = () => {
               ) : (
                 <tr>
                   <td colSpan={10} className="text-center py-8 text-muted-foreground">
-                    Tidak ada data pelari yang ditemukan.
+                    Tidak ada data personel yang ditemukan.
                   </td>
                 </tr>
               )}
@@ -569,7 +491,7 @@ const DataPelari = () => {
         {/* Pagination */}
         <div className="px-5 py-4 border-t border-border flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Menampilkan {startIndex + 1}-{Math.min(endIndex, filteredData.length)} dari {filteredData.length} pelari
+            Menampilkan {meta.total > 0 ? startIndex + 1 : 0}-{endIndex} dari {meta.total} personel
           </p>
           <div className="flex space-x-2">
             <Button

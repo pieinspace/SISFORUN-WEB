@@ -23,7 +23,23 @@ import { formatDateWIB } from "@/lib/utils";
 import html2pdf from "html2pdf.js";
 import { ChevronDown, FileSpreadsheet, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
+
+// --- Helper: authenticated fetch with auto-redirect on 401/403 ---
+const authFetch = async (url: string) => {
+  const token = localStorage.getItem("admin_token");
+  const res = await fetch(url, {
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+  return res.json();
+};
 
 const API_BASE =
   (import.meta as any).env?.VITE_API_BASE_URL?.toString?.() ||
@@ -86,14 +102,8 @@ const Laporan = () => {
   const [openSubdis, setOpenSubdis] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const [rows, setRows] = useState<ReportRow[]>([]);
-  const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Master Data State
-  const [masterKesatuan, setMasterKesatuan] = useState<MasterKesatuan[]>([]);
-  const [masterSubdis, setMasterSubdis] = useState<MasterSubdis[]>([]);
 
   useEffect(() => {
     const userStr = localStorage.getItem("admin_user");
@@ -118,101 +128,63 @@ const Laporan = () => {
   const isAdminKotama = currentUser?.role === 'admin_kotama';
   const isAdminSatuan = currentUser?.role === 'admin_satuan';
 
-  /* ================== LOAD DATA ASLI DARI API ================== */
-  useEffect(() => {
-    let cancelled = false;
+  /* ================== REACT QUERY: MASTER DATA ================== */
+  const { data: masterKesatuan = [] } = useQuery<MasterKesatuan[]>({
+    queryKey: ['master', 'kesatuan'],
+    queryFn: async () => {
+      const json = await authFetch(`${API_BASE}/api/master/kesatuan`);
+      return json.success ? json.data : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-    const load = async () => {
-      if (!filterKesatuan || !filterSubdis) {
-        setRows([]);
-        return;
-      }
+  const { data: masterSubdis = [] } = useQuery<MasterSubdis[]>({
+    queryKey: ['master', 'subdis', filterKesatuan],
+    queryFn: async () => {
+      if (!filterKesatuan) return [];
+      const json = await authFetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`);
+      return json.success ? json.data : [];
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!filterKesatuan,
+  });
 
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("admin_token");
-        const res = await fetch(`${API_BASE}/api/targets/report?kd_ktm=${filterKesatuan}&kd_smkl=${filterSubdis}`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const json = await res.json();
-        const data: ApiTarget14[] = Array.isArray(json?.data) ? json.data : [];
+  /* ================== REACT QUERY: REPORT DATA ================== */
+  const { data: rows = [], isLoading: loading } = useQuery<ReportRow[]>({
+    queryKey: ['report', filterKesatuan, filterSubdis],
+    queryFn: async () => {
+      if (!filterKesatuan || !filterSubdis) return [];
+      const json = await authFetch(`${API_BASE}/api/targets/report?kd_ktm=${filterKesatuan}&kd_smkl=${filterSubdis}`);
+      const data: ApiTarget14[] = Array.isArray(json?.data) ? json.data : [];
 
-        const mapped: ReportRow[] = data.map((x, i) => ({
-          no: i + 1,
-          id: x.id,
-          nama: x.name,
-          pangkat: x.pangkat_name || x.rank,
-          nrp: x.nrp || x.id,
-          jabatan: "-",
-          umur: "-",
-          lariJalan: "",
-          jarakKm: Number(x.distance_km ?? 0),
-          dataAplikasi: x.time_taken && x.time_taken !== "-" ? `${x.time_taken} / ${x.pace}` : "-",
-          ket: (() => {
-            const pk = parseInt(x.kd_pkt || "0");
-            const targetGoal = pk <= 45 ? 10 : 14;
-            if (x.distance_km >= targetGoal) {
-              return x.validation_status === "validated" ? "" : "Belum Valid";
-            }
-            return "Belum Selesai";
-          })(),
-          kesatuan: x.kesatuan_name ?? x.kesatuan ?? "-",
-          subdis: x.subdis_name ?? x.subdis ?? "-",
-          kd_ktm: x.kd_ktm ?? "",
-          kd_smkl: x.kd_smkl ?? "",
-          kd_pkt: x.kd_pkt ?? "",
-        }));
-
-        if (!cancelled) setRows(mapped);
-      } catch (e) {
-        if (!cancelled) setRows([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [filterKesatuan, filterSubdis]);
-
-  /* ================== LOAD MASTER DATA ================== */
-  useEffect(() => {
-    const loadMaster = async () => {
-      try {
-        const token = localStorage.getItem("admin_token");
-        const resKtm = await fetch(`${API_BASE}/api/master/kesatuan`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const jsonKtm = await resKtm.json();
-        if (jsonKtm.success) setMasterKesatuan(jsonKtm.data);
-      } catch (e) {
-        console.error("Failed to fetch master kotama", e);
-      }
-    };
-    loadMaster();
-  }, []);
-
-  useEffect(() => {
-    if (!filterKesatuan) {
-      setMasterSubdis([]);
-      return;
-    }
-    const loadSubdis = async () => {
-      const token = localStorage.getItem("admin_token");
-      try {
-        const resSmkl = await fetch(`${API_BASE}/api/master/subdis/${filterKesatuan}`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const jsonSmkl = await resSmkl.json();
-        if (jsonSmkl.success) setMasterSubdis(jsonSmkl.data);
-      } catch (e) {
-        console.error("Failed to fetch master kesatuan", e);
-      }
-    };
-    loadSubdis();
-  }, [filterKesatuan]);
+      return data.map((x, i) => ({
+        no: i + 1,
+        id: x.id,
+        nama: x.name,
+        pangkat: x.pangkat_name || x.rank,
+        nrp: x.nrp || x.id,
+        jabatan: "-",
+        umur: "-",
+        lariJalan: "",
+        jarakKm: Number(x.distance_km ?? 0),
+        dataAplikasi: x.time_taken && x.time_taken !== "-" ? `${x.time_taken} / ${x.pace}` : "-",
+        ket: (() => {
+          const pk = parseInt(x.kd_pkt || "0");
+          const targetGoal = pk <= 45 ? 10 : 14;
+          if (x.distance_km >= targetGoal) {
+            return x.validation_status === "validated" ? "" : "Belum Valid";
+          }
+          return "Belum Selesai";
+        })(),
+        kesatuan: x.kesatuan_name ?? x.kesatuan ?? "-",
+        subdis: x.subdis_name ?? x.subdis ?? "-",
+        kd_ktm: x.kd_ktm ?? "",
+        kd_smkl: x.kd_smkl ?? "",
+        kd_pkt: x.kd_pkt ?? "",
+      }));
+    },
+    enabled: !!filterKesatuan && !!filterSubdis,
+  });
 
   /* ================== FILTER DATA BERDASARKAN KESATUAN & SUBDIS ================== */
   const filteredRows = useMemo(() => {

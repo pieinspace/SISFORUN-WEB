@@ -117,13 +117,13 @@ const DetailPelari = () => {
         // 1) Fetch runner detail by ID
         const runnerRes = await fetch(`${API_BASE}/api/runners/${runnerId}`);
         if (!runnerRes.ok) {
-          throw new Error(`Pelari dengan ID ${runnerId} tidak ditemukan.`);
+          throw new Error(`Personel dengan ID ${runnerId} tidak ditemukan.`);
         }
         const runnerJson = await runnerRes.json();
         const r = runnerJson.data;
 
         if (!r) {
-          throw new Error(`Pelari dengan ID ${runnerId} tidak ditemukan.`);
+          throw new Error(`Personel dengan ID ${runnerId} tidak ditemukan.`);
         }
 
         const totalDistance = parseFloat(r.totalDistance) || 0;
@@ -178,7 +178,7 @@ const DetailPelari = () => {
           setSessionHistory(history);
         }
       } catch (e: any) {
-        if (!cancelled) setErrorMsg(e?.message || "Gagal memuat data pelari.");
+        if (!cancelled) setErrorMsg(e?.message || "Gagal memuat data personel.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -216,7 +216,7 @@ const DetailPelari = () => {
         <Link to="/pelari">
           <Button variant="ghost" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Kembali ke Data Pelari
+            Kembali ke Data Personel
           </Button>
         </Link>
 
@@ -233,7 +233,7 @@ const DetailPelari = () => {
       <Link to="/pelari">
         <Button variant="ghost" className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Kembali ke Data Pelari
+          Kembali ke Data Personel
         </Button>
       </Link>
 
@@ -364,7 +364,7 @@ const DetailPelari = () => {
 
           {sessionHistory.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              Belum ada riwayat sesi di database untuk pelari ini.
+              Belum ada riwayat sesi di database untuk personel ini.
             </div>
           ) : (
             <div className="space-y-3">

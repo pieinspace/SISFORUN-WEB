@@ -94,7 +94,7 @@ const Login = ({ onLogin }: LoginProps) => {
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-foreground">Selamat Datang</h2>
               <p className="text-muted-foreground">
-                Masuk ke panel admin untuk memantau aktivitas pelari
+                Masuk ke panel admin untuk memantau aktivitas personel
               </p>
             </div>
 
